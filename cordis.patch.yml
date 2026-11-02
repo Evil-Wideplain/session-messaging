@@ -1,0 +1,3 @@
+- insert:
+    - id: session-messaging
+      name: dsh-plugin-session-messaging

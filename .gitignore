@@ -1,0 +1,10 @@
+node_modules/
+lib/
+coverage/
+*.tsbuildinfo
+.env
+.DS_Store
+e2e-workspace/
+# 临时脚本与 asar 提取物：不属于源码，禁止入库
+.tmp-*
+*.tmp
