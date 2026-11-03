@@ -5,7 +5,7 @@
  * 一起进入编译单元，否则 `ctx.tools`、`ctx.agents` 等成员在插件代码里不可见。
  * `types.ts` 通过副作用导入本模块来保证这一点。
  *
- * @module dsh-plugin-session-messaging/types/context
+ * @module session-messaging/types/context
  */
 
 import type {
@@ -30,6 +30,7 @@ import type {
   WorkspaceRegistryService,
 } from './services.ts'
 import type { ShellEnvRegistry, ToolsService } from './tools.ts'
+import type { SessionMessagingRuntimeService } from '../shared/service.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -49,6 +50,8 @@ declare module '@deepseek-ai/cordis' {
     sessionController?: SessionControllerService
     /** 权限预设服务；用于把调用方的有效权限复制给新会话。 */
     permissionPresets?: PermissionPresetsService
+    /** 本插件主行提供给创建行的运行时切片；只有 `session-creation` 行会注入。 */
+    sessionMessaging: SessionMessagingRuntimeService
   }
 
   interface Events {

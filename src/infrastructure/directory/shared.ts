@@ -5,7 +5,7 @@
  * `DirectoryState` 共享同一份缓存引用：「同一会话的标题只短读一次」才成立；
  * 复制一份 Map 会让缓存形同虚设。
  *
- * @module dsh-plugin-session-messaging/infrastructure/directory/shared
+ * @module session-messaging/infrastructure/directory/shared
  */
 
 import type { Context } from '@deepseek-ai/cordis'

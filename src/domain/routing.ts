@@ -9,7 +9,7 @@
  * 本模块只做纯决策，不探测服务、不调用通道；「通道是否存在」和「团队成员
  * 名」由应用层以事实形式传入。
  *
- * @module dsh-plugin-session-messaging/domain/routing
+ * @module session-messaging/domain/routing
  */
 
 import type { SessionTarget } from './target.ts'

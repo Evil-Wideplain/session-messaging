@@ -5,7 +5,7 @@
  * 同一套规则——静默忽略错类型会让脚本得到「成功但少行」的结果，而不是报错。
  * `limit` 上限直接复用应用层常量，避免「脚本校验通过、服务端静默 clamp」的漂移。
  *
- * @module dsh-plugin-session-messaging/interfaces/bus/protocol
+ * @module session-messaging/interfaces/bus/protocol
  */
 
 import { LIST_MAX_LIMIT } from '../../application/messaging/deps.ts'

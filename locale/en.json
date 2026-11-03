@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "session-messaging",
+    "description": "Let sessions in the same process address each other, send messages and approve inbound messages, with a local bus for bash/pwsh scripts."
+  }
+}

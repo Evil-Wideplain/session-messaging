@@ -5,7 +5,7 @@
  * 失败并把消息吞掉，所以宁可拒绝唤醒、把消息留在发送方账本。历史 `request/header`
  * 是会话原本使用的路由，优先于部署默认模型。
  *
- * @module dsh-plugin-session-messaging/infrastructure/delivery/model-route
+ * @module session-messaging/infrastructure/delivery/model-route
  */
 
 import type { AgentOptions } from '../../types.ts'

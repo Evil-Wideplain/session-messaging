@@ -6,7 +6,7 @@
  * 在线目标可以安全回落到 inbox；离线目标必须直接失败——只有官方通道能正确
  * 冷恢复它，回落会把子会话当根会话唤醒。
  *
- * @module dsh-plugin-session-messaging/infrastructure/delivery/channels
+ * @module session-messaging/infrastructure/delivery/channels
  */
 
 import type { Context } from '@deepseek-ai/cordis'

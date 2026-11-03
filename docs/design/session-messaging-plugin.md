@@ -13,6 +13,11 @@
 > 归档门禁、投递判定、账本、文件清单 §13.1）按 DSH 0.2.x 校正；`docs/research/` 里的
 > 0.1.3-alpha.1 调研保留为历史记录，不再视为当前接口。
 
+> **更名记录（2026-11-03）**：插件命名为 `session-messaging`（不再使用 `dsh-plugin-`
+> 前缀）；主行 id 为 `session-messaging`；主行提供的服务为 `sessionMessaging`。本文
+> 历史章节里的旧名（`dsh-plugin-session-messaging` 等）保留为当时的记录。账本目录、
+> socket 名前缀与 `DSH_SESSION_MESSAGING_*` 环境变量保持不变，避免在途账本与既有脚本失效。
+
 > 目标：在 DSH 中提供与 Claude Code 同形的会话间通信能力——发现会话、发送消息，
 > 并让 bash 脚本也能投递消息。
 > 前置调研：[claude-code-session-messaging.md](../research/claude-code-session-messaging.md)（机制原理）、
@@ -515,7 +520,7 @@ export function apply(ctx: Context, config: Config) {
 
 ## 13. 实现状态（2026-11-01）
 
-插件已在 `dsh-plugin-session-messaging` 里按本方案一次性实现（不分 P0/P1）：工具、冷唤醒、落盘账本、
+插件已在 `session-messaging` 里按本方案一次性实现（不分 P0/P1）：工具、冷唤醒、落盘账本、
 bash/pwsh 通道一起交付。本节记录**实际落地**的形态与方案正文的差异，正文保持不变，作为设计依据。
 
 ### 13.1 实际文件
@@ -524,14 +529,20 @@ bash/pwsh 通道一起交付。本节记录**实际落地**的形态与方案正
 
 | 路径 | 职责 |
 |---|---|
-| `src/index.ts` | `name` / `inject` / `Config` / `apply`：注册三个工具、启动 bus（成功后注入 shellEnv）、挂 `agent/created` 重放 |
+| `src/index.ts` | 组合包入口（`package.json` 的 `main`）：只转出 `entries/messaging.ts` 的 `name` / `inject` / `apply` / `Config` |
+| `src/creation.ts` | 创建行入口（`package.json` 的 `./creation` 子路径）：只转出 `entries/creation.ts` |
+| `src/entries/messaging.ts` | 主行 `session-messaging`：装配运行时、provide `sessionMessaging`、注册三个会话间工具、启动 bus（成功后注入 shellEnv）、挂 `agent/created` 重放 |
+| `src/entries/creation.ts` | 创建行 `session-creation`：inject 主行服务，只注册 `create_session_agent`；两行在插件页上是独立组件、可分别启停 |
+| `src/shared/service.ts` | 跨行服务契约：`sessionMessaging` 服务名与 `SessionMessagingRuntimeService` 切片 |
+| `locale/{en,zh}.json` | 插件（组合包）与主行组件共用的标题/描述（由 `package.json` 的 `./locale/*.json` 导出） |
+| `locale/creation/{en,zh}.json` | 子路径组件在插件页的显示名与描述（由 `package.json` 的 `./creation/locale/*.json` 导出） |
 | `src/composition.ts` | 组合根：端口 → 具体适配器；暴露 `MessagingRuntime` |
 | `src/config.ts` | 扁平配置 + schemastery schema + 默认值 + 运行期派生项（`pathCaseInsensitive`） |
 | `src/types.ts` | 本插件用到的 DSH 服务结构化契约 + Cordis `Context`/`Events` declaration merging |
 | `src/domain/` | 纯规则：`target.ts` 寻址、`authorization.ts` 授权矩阵、`routing.ts` 通道路由、`message.ts` 消息构造与送达判定（含来源框架）、`inbound-policy.ts` 入站三态与容量、`held-message.ts` 待审实体、`outbox.ts` 账本模型 |
 | `src/application/` | `messaging-service.ts` 用例编排（list/send/review/recover）、`dto.ts` 返回形状、`guards.ts` 频率与去重窗口、`ports.ts` 端口接口 |
 | `src/infrastructure/` | `jsonl-ledger.ts` 追加式账本原语、`jsonl-outbox-repository.ts`、`jsonl-inbound-repository.ts`、`cordis-session-directory.ts`、`cordis-delivery-gateway.ts`、`persisted-session.ts`、`paths.ts` |
-| `src/interfaces/` | `model-tools.ts` 三个工具的 JSON Schema 与参数校验、`local-bus.ts` 每用户 bus server + shellEnv 注入 |
+| `src/interfaces/` | `model-tools.ts` 工具的 JSON Schema 与参数校验、`local-bus.ts` 每用户 bus server + shellEnv 注入 |
 | `scripts/e2e-runtime.mjs` | 真运行时 e2e（dsh CLI + 真模型）；只允许跑在名字以 `-e2e` 结尾的 profile，并备份/还原其 patch |
 
 （v3 起为满足「每个 TS/JS 文件 ≤200 行」的工程规范，上表中的长文件已拆成

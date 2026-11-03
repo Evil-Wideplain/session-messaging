@@ -26,7 +26,7 @@
  * 本文件只保留公开导出：实现分散在 `bus/` 子模块（protocol / connection /
  * listener / server / shell-env）。
  *
- * @module dsh-plugin-session-messaging/interfaces/local-bus
+ * @module session-messaging/interfaces/local-bus
  */
 
 export { LocalBus } from './bus/server.ts'

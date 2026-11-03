@@ -56,6 +56,7 @@ describe('plugin wiring', () => {
       effect: (fn: () => unknown) => { fn(); return () => {} },
       on: (event: string) => { subscribed.push(event); return () => {} },
       get: () => undefined,
+      provide: () => () => {},
     } as unknown as Context
     apply(ctx, Config({ socketEnabled: false }))
     expect(subscribed).toContain('agent/created')

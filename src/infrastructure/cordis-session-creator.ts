@@ -19,7 +19,7 @@
  * `session-finish.ts`）：Workspace attach（应用层没解析出 Workspace 时按 cwd
  * 补归属）、权限预设继承、标题写入。
  *
- * @module dsh-plugin-session-messaging/infrastructure/cordis-session-creator
+ * @module session-messaging/infrastructure/cordis-session-creator
  */
 
 import type { Context } from '@deepseek-ai/cordis'

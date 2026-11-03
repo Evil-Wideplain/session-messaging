@@ -13,7 +13,7 @@
  * 另有 {@link authorizeCwd}：创建会话时的目录授权（同一套 workspace 策略，
  * 但没有「目标会话」这个值对象，也不该靠伪造目标复用投递判定）。
  *
- * @module dsh-plugin-session-messaging/domain/authorization
+ * @module session-messaging/domain/authorization
  */
 
 import type { Agent } from '../types.ts'

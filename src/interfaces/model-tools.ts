@@ -10,7 +10,7 @@
  * 每个工具的实现拆在 `tools/` 子模块里，本文件只做汇总再导出，
  * 导入方继续写 `import { createListTool } from '../interfaces/model-tools.ts'`。
  *
- * @module dsh-plugin-session-messaging/interfaces/model-tools
+ * @module session-messaging/interfaces/model-tools
  */
 
 export { createListTool } from './tools/list.ts'

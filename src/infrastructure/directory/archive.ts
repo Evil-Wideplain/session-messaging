@@ -5,7 +5,7 @@
  * 把未知当空会让归档预检静默失效，唤醒归档会话即丢消息。归档门禁按会话血缘
  * 生效，因此子代理要一路向上查到根，而不只看直接父级。
  *
- * @module dsh-plugin-session-messaging/infrastructure/directory/archive
+ * @module session-messaging/infrastructure/directory/archive
  */
 
 import type { SessionHeader, WorkspaceRegistryService } from '../../types.ts'

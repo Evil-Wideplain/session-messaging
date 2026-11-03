@@ -5,7 +5,7 @@
  * 排序权重 running → idle → offline，同权重按显示名排序，超出的行计入
  * `truncated`。
  *
- * @module dsh-plugin-session-messaging/application/messaging/list
+ * @module session-messaging/application/messaging/list
  */
 
 import type { SessionTarget } from '../../domain/target.ts'

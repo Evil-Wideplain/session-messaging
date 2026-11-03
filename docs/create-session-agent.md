@@ -1,6 +1,6 @@
 # `create_session_agent`：创建普通会话并投递首条消息
 
-> 所属插件：[`dsh-plugin-session-messaging`](../README.md) · 工具版本：v4（2026-11-02）·
+> 所属插件：[`session-messaging`](../README.md) · 工具版本：v4（2026-11-02）·
 > 实现：[`application/session-creation-service.ts`](../src/application/session-creation-service.ts) +
 > [`application/session-creation/location.ts`](../src/application/session-creation/location.ts) +
 > [`infrastructure/cordis-session-creator.ts`](../src/infrastructure/cordis-session-creator.ts) +
@@ -286,4 +286,4 @@ Remote 调用侧的 principal。
 | [`tests/create-session-creator.test.ts`](../tests/create-session-creator.test.ts) | 基础设施适配器单测 |
 | [`tests/create-session-tool.test.ts`](../tests/create-session-tool.test.ts) | 工具契约单测 |
 | [`tests/support/create-session-fixtures.ts`](../tests/support/create-session-fixtures.ts) | 6 个 create-session 相关文件共享的夹具 |
-| [`docs/design/dsh-session-messaging-plugin.md`](design/dsh-session-messaging-plugin.md) | 插件整体设计与 v3 决策记录（§16） |
+| [`docs/design/session-messaging-plugin.md`](design/session-messaging-plugin.md) | 插件整体设计与 v3 决策记录（§16） |

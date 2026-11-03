@@ -5,7 +5,7 @@
  * 全部在应用服务里完成；render 里的会话名/cwd 等来自其他会话，先过
  * `inlineText` 再拼成「一行一条」。
  *
- * @module dsh-plugin-session-messaging/interfaces/tools/list
+ * @module session-messaging/interfaces/tools/list
  */
 
 import type { ListRow } from '../../application/dto.ts'

@@ -8,7 +8,7 @@
  * 恢复记录按引用计数共享：并发投递拿到同一个 Agent，先结束的一方只减少引用，
  * 不能销毁另一方仍在 steer 或仍在等首轮结果的实例。
  *
- * @module dsh-plugin-session-messaging/infrastructure/delivery/wake
+ * @module session-messaging/infrastructure/delivery/wake
  */
 
 import type { Context } from '@deepseek-ai/cordis'

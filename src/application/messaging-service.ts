@@ -12,7 +12,7 @@
  * 每个用例的实现拆在 `messaging/` 子模块里；本类只装配一次 `MessagingContext`
  * （依赖按引用 + 可变状态），把它作为显式参数传给用例函数，公开导出与签名保持不变。
  *
- * @module dsh-plugin-session-messaging/application/messaging-service
+ * @module session-messaging/application/messaging-service
  */
 
 import type { Agent } from '../types.ts'

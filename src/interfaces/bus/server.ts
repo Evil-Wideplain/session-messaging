@@ -6,7 +6,7 @@
  * 会话。端点的监听生命周期在 `listener.ts`，单条连接的读写协议在
  * `connection.ts`，请求参数校验与错误文案在 `protocol.ts`。
  *
- * @module dsh-plugin-session-messaging/interfaces/bus/server
+ * @module session-messaging/interfaces/bus/server
  */
 
 import { randomBytes } from 'node:crypto'

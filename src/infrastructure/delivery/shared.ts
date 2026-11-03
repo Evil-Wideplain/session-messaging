@@ -9,7 +9,7 @@
  * 持有者离开时才允许释放句柄、摘监听；否则先结束的一方会把另一方正在 steer
  * 的 Agent 销毁。
  *
- * @module dsh-plugin-session-messaging/infrastructure/delivery/shared
+ * @module session-messaging/infrastructure/delivery/shared
  */
 
 import type { Context } from '@deepseek-ai/cordis'

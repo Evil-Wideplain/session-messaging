@@ -1,7 +1,7 @@
 {
-  "name": "dsh-plugin-session-messaging",
+  "name": "session-messaging",
   "version": "0.1.0",
-  "description": "DSH bundle plugin: cross-session addressing and messaging tools (list_session_agents, send_session_message, review_session_messages, create_session_agent), official subagent/team routing, inbound accept/hold/refuse approval, and a local bus for shell scripts",
+  "description": "DSH plugin: cross-session messaging (address sessions, send messages, approve inbound messages) with a local bus for bash/pwsh scripts, plus a separately toggleable session-creation component.",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -10,12 +10,19 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./creation": {
+      "types": "./lib/types/creation.d.ts",
+      "default": "./lib/creation.js"
+    },
+    "./locale/*.json": "./locale/*.json",
+    "./creation/locale/*.json": "./locale/creation/*.json",
     "./package.json": "./package.json"
   },
   "files": [
     "lib/**/*.js",
     "lib/types/**/*.d.ts",
     "cordis.patch.yml",
+    "locale/**/*.json",
     "README.md",
     "LICENSE"
   ],

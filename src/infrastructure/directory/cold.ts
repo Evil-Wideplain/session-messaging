@@ -5,7 +5,7 @@
  * 同样缓存，避免失败读取在每次 list 里重放。批量读取用 `mapLimit` 限并发，
  * 保持候选顺序稳定。
  *
- * @module dsh-plugin-session-messaging/infrastructure/directory/cold
+ * @module session-messaging/infrastructure/directory/cold
  */
 
 import type { SessionHeader } from '../../types.ts'

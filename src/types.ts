@@ -10,7 +10,7 @@
  * 具体声明按主题拆在 `types/` 子模块里，这里只做汇总再导出；导入方继续写
  * `import type { ... } from '../types.ts'` 即可，公开导出名与路径不变。
  *
- * @module dsh-plugin-session-messaging/types
+ * @module session-messaging/types
  */
 
 // 副作用导入：Cordis 的 `Context` / `Events` 增补必须进入编译单元，

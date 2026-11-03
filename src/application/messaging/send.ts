@@ -4,7 +4,7 @@
  * 顺序是语义的一部分：解析先于授权会变成枚举 oracle；频控放在去重之后
  * （命中去重不产生投递，不应消耗配额）；挂起分支在 `inbound.ts` 里。
  *
- * @module dsh-plugin-session-messaging/application/messaging/send
+ * @module session-messaging/application/messaging/send
  */
 
 import { randomUUID } from 'node:crypto'

@@ -14,7 +14,7 @@
  * 本类不解释账本语义（哪些 op 是终态、哪些记录要保留），只提供文件原语；
  * 语义留给两个仓储实现。
  *
- * @module dsh-plugin-session-messaging/infrastructure/jsonl-ledger
+ * @module session-messaging/infrastructure/jsonl-ledger
  */
 
 import {

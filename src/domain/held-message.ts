@@ -4,7 +4,7 @@
  * 「待审批」是一条有生命周期的业务状态：被挂起 → 被接受 / 被拒绝 / 过期。
  * 状态变化由应用层驱动，落盘由基础设施层负责。
  *
- * @module dsh-plugin-session-messaging/domain/held-message
+ * @module session-messaging/domain/held-message
  */
 
 /** 一条等待目标审批的消息。 */

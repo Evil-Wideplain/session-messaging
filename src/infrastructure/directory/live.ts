@@ -5,7 +5,7 @@
  * 成一份去重后的列表。冷会话先收集待补标题的会话头，再限并发读标题：保持候选
  * 顺序稳定的同时把串行 200 次整日志读压到 8 路并发。
  *
- * @module dsh-plugin-session-messaging/infrastructure/directory/live
+ * @module session-messaging/infrastructure/directory/live
  */
 
 import type { Agent, SessionHeader } from '../../types.ts'

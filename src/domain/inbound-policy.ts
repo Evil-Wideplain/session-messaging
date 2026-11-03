@@ -4,7 +4,7 @@
  * 对应 Claude Code 的 `crossSessionInbound` 三态开关：直接接收、挂起等待
  * 目标审批、一律拒绝。挂起窗口与容量上限是策略的一部分，规则本身不落盘。
  *
- * @module dsh-plugin-session-messaging/domain/inbound-policy
+ * @module session-messaging/domain/inbound-policy
  */
 
 /** 入站策略三态。 */

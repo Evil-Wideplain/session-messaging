@@ -11,7 +11,7 @@
  * 两个方法都先查已登记记录：幂等调用（目录已登记、只是再确认一次）不需要
  * `create` 能力，也不应该产生副作用。
  *
- * @module dsh-plugin-session-messaging/infrastructure/cordis-workspace-resolver
+ * @module session-messaging/infrastructure/cordis-workspace-resolver
  */
 
 import { mkdir } from 'node:fs/promises'

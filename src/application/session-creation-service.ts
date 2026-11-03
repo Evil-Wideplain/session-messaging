@@ -15,7 +15,7 @@
  *   副作用之前，被拒绝的请求不能留下 mkdir/登记；
  * - 首条消息复用转发消息的构造（带来源框架），让新会话知道这话来自会话而非人类。
  *
- * @module dsh-plugin-session-messaging/application/session-creation-service
+ * @module session-messaging/application/session-creation-service
  */
 
 import { randomUUID } from 'node:crypto'

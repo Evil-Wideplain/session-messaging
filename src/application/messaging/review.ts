@@ -4,7 +4,7 @@
  * `accept` 会重新做一次授权（发送方可能在挂起期间失去可见性），只有网关确认
  * 送达才结算为 accepted；`refuse` 直接丢弃并给发送方 ack。
  *
- * @module dsh-plugin-session-messaging/application/messaging/review
+ * @module session-messaging/application/messaging/review
  */
 
 import { randomUUID } from 'node:crypto'

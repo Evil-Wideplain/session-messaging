@@ -3,7 +3,7 @@
  *
  * 只声明本插件用到的服务切片，真实对象由 Cordis 传入。
  *
- * @module dsh-plugin-session-messaging/types/agent
+ * @module session-messaging/types/agent
  */
 
 import type { Context } from '@deepseek-ai/cordis'

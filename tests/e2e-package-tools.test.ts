@@ -4,6 +4,7 @@
 
 import { afterEach, describe, expect, it } from 'vitest'
 import * as plugin from '../lib/index.js'
+import * as creation from '../lib/creation.js'
 import { JsonlOutboxRepository } from '../lib/infrastructure/jsonl-outbox-repository.js'
 import { cleanupTempDirs, spliced } from './support/common.ts'
 import { boot, makeE2eAgent } from './support/e2e-fixtures.ts'
@@ -22,6 +23,34 @@ describe('built package end to end', () => {
     expect(config.socketEnabled).toBe(true)
     expect(config.allowCreateSession).toBe(true)
     expect(config.maxCreatesPerMinute).toBe(4)
+  })
+
+  it('splits create_session_agent into its own loader row', async () => {
+    expect(creation.name).toBe('session-creation')
+    expect(creation.inject).toEqual(['tools', 'sessionMessaging'])
+
+    const harness = boot({
+      agents: [makeE2eAgent({ id: 'a', cwd: '/repo' })],
+      withCreation: false,
+    })
+    try {
+      // 只装主行：三个会话间通信工具在，创建工具不在。
+      expect([...harness.tools.keys()].sort()).toEqual([
+        'list_session_agents',
+        'review_session_messages',
+        'send_session_message',
+      ])
+      // 创建行单独装回：只补 create_session_agent，不重复注册其他工具。
+      creation.apply(harness.ctx)
+      expect([...harness.tools.keys()].sort()).toEqual([
+        'create_session_agent',
+        'list_session_agents',
+        'review_session_messages',
+        'send_session_message',
+      ])
+    } finally {
+      await harness.dispose()
+    }
   })
 
   it('registers the four tools with model-facing schemas and renders', async () => {

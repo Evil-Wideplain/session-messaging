@@ -9,7 +9,7 @@
  * 返回完全相同的回包（含 cwd 字段），否则调用方可以用文案差异枚举工作区
  * 登记状态；只有绝对路径写法保留可操作的提示。
  *
- * @module dsh-plugin-session-messaging/application/session-creation/location
+ * @module session-messaging/application/session-creation/location
  */
 
 import { isAbsolute } from 'node:path'

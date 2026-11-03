@@ -4,7 +4,7 @@
  * 同一会话并发启动只跑一次（按调用方 id 去重）；重放失败保持 queued，
  * 等下一轮启动或人工重试再投。
  *
- * @module dsh-plugin-session-messaging/application/messaging/recover
+ * @module session-messaging/application/messaging/recover
  */
 
 import { randomUUID } from 'node:crypto'

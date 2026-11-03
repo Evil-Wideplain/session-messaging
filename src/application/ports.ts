@@ -4,7 +4,7 @@
  * 应用服务只认识这些接口，由基础设施层用 Cordis / JSONL 实现；测试可以
  * 换成内存实现。领域层不知道这些接口的存在。
  *
- * @module dsh-plugin-session-messaging/application/ports
+ * @module session-messaging/application/ports
  */
 
 import type { Agent, UserMessage } from '../types.ts'

@@ -9,7 +9,7 @@
  * 冷唤醒的恢复记录按引用共享：本模块每次 acquire 后都恰好释放一次，成功只减
  * 引用，失败/未确认送达才按「放弃恢复」销毁句柄。
  *
- * @module dsh-plugin-session-messaging/infrastructure/delivery/inbox
+ * @module session-messaging/infrastructure/delivery/inbox
  */
 
 import type { DeliveryOutcome } from '../../application/ports.ts'

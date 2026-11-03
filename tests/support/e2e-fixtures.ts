@@ -5,6 +5,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent, SessionEvent, ToolDefinition, ToolExecution } from '../../src/types.ts'
 import * as plugin from '../../lib/index.js'
+import * as creationPlugin from '../../lib/creation.js'
 import { tempDir } from './common.ts'
 
 export interface E2eHeader {
@@ -51,6 +52,8 @@ export interface BootOptions {
   readonly agents: Agent[]
   readonly inbound?: 'accept' | 'hold' | 'refuse'
   readonly titles?: ReadonlyMap<string, string>
+  /** 是否装配 `session-creation` 行；false 时只装主行（用于验证行拆分）。 */
+  readonly withCreation?: boolean
 }
 
 export function boot(options: BootOptions) {
@@ -85,6 +88,10 @@ export function boot(options: BootOptions) {
       return () => {}
     },
     get: (name: string) => services.get(name),
+    provide(name: string, value: unknown) {
+      services.set(name, value)
+      return () => { services.delete(name) }
+    },
     tools: {
       register(definition: ToolDefinition) {
         tools.set(definition.name, definition)
@@ -105,6 +112,9 @@ export function boot(options: BootOptions) {
     socketDir,
     ...options.inbound === undefined ? {} : { inbound: options.inbound },
   }))
+
+  // 主行已 provide `sessionMessaging`；创建行按真实 Loader 的方式单独 apply。
+  if (options.withCreation !== false) creationPlugin.apply(ctx)
 
   return {
     ctx,

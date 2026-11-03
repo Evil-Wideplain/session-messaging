@@ -4,7 +4,7 @@
  * 通过 `SessionPersistenceService` 打开只读句柄，读出会话头与完整事件日志，
  * 再折叠出标题、模型路由等恢复所需信息。这里只做读取，不做缓存。
  *
- * @module dsh-plugin-session-messaging/infrastructure/persisted-session
+ * @module session-messaging/infrastructure/persisted-session
  */
 
 import type { SessionEvent, SessionHeader, SessionPersistenceService } from '../types.ts'

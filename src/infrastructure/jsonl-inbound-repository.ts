@@ -12,7 +12,7 @@
  * `settle` 必须显式带上要裁决的 messageId 集合：缺省语义是「全部挂起消息」，
  * 用它来结算「本次刚过期的那些」会把尚未到期的消息一起删掉。
  *
- * @module dsh-plugin-session-messaging/infrastructure/jsonl-inbound-repository
+ * @module session-messaging/infrastructure/jsonl-inbound-repository
  */
 
 import type { HeldMessage, HeldVerdict } from '../domain/held-message.ts'

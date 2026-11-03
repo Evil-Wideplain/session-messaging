@@ -4,7 +4,7 @@
  * 创建会话时需要把「工作区 id 或目录」翻译成一个可创建会话的位置；
  * 解析与登记都是运行时细节，由基础设施层实现。
  *
- * @module dsh-plugin-session-messaging/application/ports-workspace
+ * @module session-messaging/application/ports-workspace
  */
 
 /** 一个已登记 Workspace 的投影（创建会话用）。 */

@@ -5,7 +5,7 @@
  * 最终收敛到 `delivered` / `expired` / `refused` 三个终态之一。
  * `held` 不参与「发送方重启后重放」——它归接收方的入站账本管。
  *
- * @module dsh-plugin-session-messaging/domain/outbox
+ * @module session-messaging/domain/outbox
  */
 
 /** 一条未确认的出站消息。 */

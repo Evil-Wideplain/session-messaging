@@ -5,7 +5,7 @@
  * Cordis 传入。服务是否装配由部署决定，因此除 `tools` / `agents` / `sessions`
  * 之外的切片都是可选的。
  *
- * @module dsh-plugin-session-messaging/types/services
+ * @module session-messaging/types/services
  */
 
 import type { Context } from '@deepseek-ai/cordis'

@@ -4,7 +4,7 @@
  * 只做字段重命名与派生（short id、workspace 关系、state）、排序权重与统一回包，
  * 不做授权判定。
  *
- * @module dsh-plugin-session-messaging/application/messaging/rows
+ * @module session-messaging/application/messaging/rows
  */
 
 import type { HeldMessage } from '../../domain/held-message.ts'

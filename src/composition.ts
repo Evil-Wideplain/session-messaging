@@ -4,7 +4,7 @@
  * 这是唯一知道「接口 → Cordis 实现」映射的地方；`interfaces/` 与 `application/`
  * 都不直接 new 基础设施类，测试可以用假的上下文或假适配器替换。
  *
- * @module dsh-plugin-session-messaging/composition
+ * @module session-messaging/composition
  */
 
 import { join } from 'node:path'

@@ -9,7 +9,7 @@
  * 替生产者补任何提示，`source` 元数据只到 UI 为止。所以「谁发的」只能写进
  * `content`，否则目标模型看到的是一段无主的用户文本。
  *
- * @module dsh-plugin-session-messaging/domain/message
+ * @module session-messaging/domain/message
  */
 
 import type { SessionEvent, UserMessage } from '../types.ts'

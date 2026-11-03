@@ -9,7 +9,7 @@
  * 每用户只有一个。此时退让到进程私有端点（同名加进程号），保证本进程里脚本
  * 注入的 socket/token 仍然可用；不去抢、也不共享别人的总线。
  *
- * @module dsh-plugin-session-messaging/interfaces/bus/listener
+ * @module session-messaging/interfaces/bus/listener
  */
 
 import { chmod, unlink } from 'node:fs/promises'

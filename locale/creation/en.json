@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "session-creation",
+    "description": "Registers create_session_agent: lets the model start a new root session and deliver the first message into it."
+  }
+}

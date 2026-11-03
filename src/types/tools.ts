@@ -3,7 +3,7 @@
  *
  * `ctx.tools` / `ctx.shellEnv` 的本地声明，真实对象由 Cordis 传入。
  *
- * @module dsh-plugin-session-messaging/types/tools
+ * @module session-messaging/types/tools
  */
 
 import type { Agent } from './agent.ts'

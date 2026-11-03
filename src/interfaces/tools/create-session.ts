@@ -7,7 +7,7 @@
  * prompt 只校验类型（缺失/非字符串才抛参数错误）：空/纯空白是应用层要判定的
  * 业务拒绝，应返回 `status: refused`，而不是让工具抛异常。
  *
- * @module dsh-plugin-session-messaging/interfaces/tools/create-session
+ * @module session-messaging/interfaces/tools/create-session
  */
 
 import type { CreateSessionStatus } from '../../application/dto.ts'

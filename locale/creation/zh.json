@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "session-creation",
+    "description": "注册 create_session_agent：让模型新建一个普通（root）会话，并把首条消息投递进去。"
+  }
+}

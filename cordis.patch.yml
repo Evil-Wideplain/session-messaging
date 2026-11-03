@@ -1,3 +1,11 @@
+# 一个插件包拆成两个装载行（组件），可分别启停：
+# - 主行 session-messaging：装配运行时，提供 sessionMessaging 服务，
+#   注册 list/send/review 三个工具、本地总线与恢复钩子；
+# - 创建行 session-creation（包子路径入口）：注入主行的服务，只注册
+#   create_session_agent。关掉它只少这一个工具，主行不受影响。
 - insert:
     - id: session-messaging
-      name: dsh-plugin-session-messaging
+      name: session-messaging
+
+    - id: session-creation
+      name: session-messaging/creation

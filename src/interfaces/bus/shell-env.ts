@@ -4,7 +4,7 @@
  * 把总线端点与每会话 token 注册进 bash/pwsh 环境。token 按密钥对待：它是
  * 「连接 = 某个发送方身份」的唯一依据，注入后脚本的身份就是它所在的会话。
  *
- * @module dsh-plugin-session-messaging/interfaces/bus/shell-env
+ * @module session-messaging/interfaces/bus/shell-env
  */
 
 import type { Context } from '@deepseek-ai/cordis'

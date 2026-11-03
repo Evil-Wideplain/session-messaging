@@ -4,7 +4,7 @@
  * 这一组函数都直接作用于目标侧的入站账本与发送方出站账本；过期/淘汰必须
  * 精确结算到具体 messageId，否则会误删尚未到期的挂起消息（静默丢消息）。
  *
- * @module dsh-plugin-session-messaging/application/messaging/inbound
+ * @module session-messaging/application/messaging/inbound
  */
 
 import type { HeldMessage } from '../../domain/held-message.ts'

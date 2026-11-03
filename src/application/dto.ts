@@ -3,7 +3,7 @@
  *
  * 这些形状直接对应工具参数/返回值与 bus 响应，不参与领域规则。
  *
- * @module dsh-plugin-session-messaging/application/dto
+ * @module session-messaging/application/dto
  */
 
 /** 一次发送尝试的终态。 */

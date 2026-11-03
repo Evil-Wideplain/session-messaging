@@ -5,7 +5,7 @@
  * 策略全部由应用服务决定；返回值把应用层 DTO 再投影回模型的 snake_case 形状。
  * render 的 detail / 目标名 / 候选名都可能带对端可控文本，先过 `inlineText`。
  *
- * @module dsh-plugin-session-messaging/interfaces/tools/send
+ * @module session-messaging/interfaces/tools/send
  */
 
 import type { SendStatus } from '../../application/dto.ts'

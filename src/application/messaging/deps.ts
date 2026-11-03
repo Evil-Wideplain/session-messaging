@@ -5,7 +5,7 @@
  * （补上默认日志与可变状态），再把上下文显式传给 `messaging/` 下的用例函数。
  * 这样用例函数不持有服务实例，也不依赖 Cordis。
  *
- * @module dsh-plugin-session-messaging/application/messaging/deps
+ * @module session-messaging/application/messaging/deps
  */
 
 import type { ResolvedConfig } from '../../config.ts'

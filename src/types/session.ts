@@ -5,7 +5,7 @@
  * 插件，必须在不同 alpha 版本之间继续可用，因此只声明自己用到的服务切片，
  * 真实对象由 Cordis 传入。本文件只做类型声明。
  *
- * @module dsh-plugin-session-messaging/types/session
+ * @module session-messaging/types/session
  */
 
 /** 持久的会话标识（本插件按不透明字符串处理）。 */

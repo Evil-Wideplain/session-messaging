@@ -67,10 +67,10 @@ export function checkProfile() {
     fail(`profile ${PROFILE} is missing. Create it with: dsh plugin --profile ${PROFILE} add "${REPO}"`)
   }
   const parsed = JSON.parse(readFileSync(manifest, 'utf8'))
-  const linked = parsed.dependencies?.['dsh-plugin-session-messaging']
-  const bundle = parsed.dsh?.profile?.bundles?.includes('dsh-plugin-session-messaging')
-  if (linked === undefined) fail(`profile ${PROFILE} has no dsh-plugin-session-messaging dependency`)
-  if (bundle !== true) fail(`profile ${PROFILE} does not list dsh-plugin-session-messaging as a bundle`)
+  const linked = parsed.dependencies?.['session-messaging']
+  const bundle = parsed.dsh?.profile?.bundles?.includes('session-messaging')
+  if (linked === undefined) fail(`profile ${PROFILE} has no session-messaging dependency`)
+  if (bundle !== true) fail(`profile ${PROFILE} does not list session-messaging as a bundle`)
   if (!existsSync(join(REPO, 'lib', 'index.js'))) fail('lib/index.js is missing; run npm run build first')
   return { linked, dir }
 }

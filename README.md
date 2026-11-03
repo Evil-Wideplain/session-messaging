@@ -1,4 +1,4 @@
-# dsh-plugin-session-messaging
+# session-messaging
 
 DSH bundle 插件：让同一个 DSH 进程里的会话可以**互相寻址、互相唤醒、互相发消息**。
 
@@ -12,11 +12,14 @@ DSH bundle 插件：让同一个 DSH 进程里的会话可以**互相寻址、�
 | 新建一个普通会话并投递第一条消息 | 工具 `create_session_agent` |
 | bash / pwsh 脚本发消息 | 每用户一个本地 bus socket + 每会话 token（`ctx.shellEnv` 注入） |
 
+插件页上它拆成两个组件：`session-messaging`（三个会话间工具 + 本地总线）和 `session-creation`
+（只注册 `create_session_agent`），两个组件可以分别启停。
+
 投递优先走官方通道：同团队成员走 `ctx.agentTeams.sendMessage`（按成员名，优先于 subagent 通道），
 自己的 continuable subagent 走 `ctx.subagents.sendMessage`，其余走会话 inbox（`Agent.steer`）。
 名册里的 inactive 队友也是可寻址目标，由 team mailbox 冷恢复。
 
-设计与取舍见 [`docs/design/dsh-session-messaging-plugin.md`](docs/design/dsh-session-messaging-plugin.md)；
+设计与取舍见 [`docs/design/session-messaging-plugin.md`](docs/design/session-messaging-plugin.md)；
 Claude Code 的机制对照见 [`docs/research/claude-code-session-messaging.md`](docs/research/claude-code-session-messaging.md)。
 `create_session_agent` 的独立完整文档见 [`docs/create-session-agent.md`](docs/create-session-agent.md)。
 
@@ -26,7 +29,13 @@ Claude Code 的机制对照见 [`docs/research/claude-code-session-messaging.md`
 
 ```text
 src/
-├─ index.ts                     # 组合根：name / inject / Config / apply + 恢复钩子
+├─ index.ts                     # 组合包入口（package main）：只转出 entries/messaging
+├─ creation.ts                  # ./creation 子路径入口：只转出 entries/creation
+├─ entries/
+│  ├─ messaging.ts              # 主行 session-messaging：运行时 + 三个工具 + 总线 + 恢复
+│  └─ creation.ts               # 创建行 session-creation：只注册 create_session_agent
+├─ shared/
+│  └─ service.ts                # 跨行服务契约：sessionMessaging（主行 provide）
 ├─ composition.ts               # 装配：端口 → 具体适配器
 ├─ config.ts                    # 扁平配置 + schemastery schema + 默认值
 ├─ types.ts                     # 契约 barrel；类型真身在 types/
@@ -78,6 +87,8 @@ scripts/
 ├─ e2e-runtime.mjs              # 真运行时 e2e 流程
 └─ e2e/                         # env / profile / headless / checks
 cordis.patch.yml                # bundle 层插入插件行
+locale/{en,zh}.json             # 插件（组合包）与主行组件的标题/描述
+locale/creation/{en,zh}.json    # 子路径组件（session-creation）的标题/描述
 ```
 
 分层约定：`domain/` 不 import 任何 Cordis 或 `node:fs`；`application/` 只依赖
@@ -96,7 +107,22 @@ dsh plugin --profile demo add .
 dsh --profile demo
 ```
 
-插件通过 `cordis.patch.yml` 插入组合，插件名 `session-messaging`，工具注册在全局层，所有会话可见。
+插件通过 `cordis.patch.yml` 插入组合。包内拆成两个装载行（插件页上是两个独立组件）：
+
+| 组件 / 行 id | 入口 | 提供什么 |
+|---|---|---|
+| `session-messaging` | `session-messaging` | `list_session_agents` / `send_session_message` / `review_session_messages`、本地总线、`create_session_agent` 依赖的 `sessionMessaging` 服务 |
+| `session-creation` | `session-messaging/creation` | 只注册 `create_session_agent`；注入主行提供的 `sessionMessaging` 服务 |
+
+插件页显示的标题和描述由 locale meta 提供：包根 `locale/{en,zh}.json` 同时是「插件（组合包）」
+和主行组件 `session-messaging` 的文案（两者模块标识相同，共用一份）；创建行用
+`locale/creation/{en,zh}.json`，显示为 `session-creation`。注意创建行在 Loader 里的模块标识仍是
+`session-messaging/creation`——同一个包内只能用子路径解析，裸名 `session-creation` 需要独立包或
+profile 侧别名才能解析。
+
+两行可以分别启停：关掉 `session-creation` 只少 `create_session_agent` 一个工具；
+关掉 `session-messaging` 则主行工具、本地总线与创建行一起停（创建行等依赖）。
+工具注册在全局层，所有会话可见。
 
 ## 工具
 
@@ -234,6 +260,7 @@ dsh --profile demo
 | `socketEnabled` | `true` | 是否开本地 bus |
 | `socketDir` | 系统临时目录 | POSIX socket / Windows 管道名的来源目录；默认 `…/dsh-session-messaging-<uid>` |
 | `outboxDir` | `$DSH_HOME/session-messaging/outbox` | 账本目录 |
+| — | — | 账本目录、socket 名前缀与 `DSH_SESSION_MESSAGING_*` 环境变量沿用旧名 `session-messaging`：它们是持久化/传输标识，改名会让在途账本和既有脚本失效；插件页显示名、包名、行 id 与 Cordis 服务名已经改为 `session-messaging` |
 | `allowCreateSession` | `true` | 允许 `create_session_agent` 创建新的普通会话 |
 | `maxCreatesPerMinute` | `4` | 每个调用方每分钟最多创建多少个新会话 |
 | `allowCreateWorkspace` | `true` | 允许 `ensure_workspace` 把目录登记成工作区 |
@@ -243,11 +270,13 @@ dsh --profile demo
 ```yaml
 - insert:
     - id: session-messaging
-      name: dsh-plugin-session-messaging
+      name: session-messaging
       config:
         allowCrossWorkspace: true
         allowlist: ["/work/shared"]
 ```
+
+配置属于主行 `session-messaging`；`session-creation` 行没有自己的配置，创建行为随主行配置。
 
 ## bash / pwsh 通道
 

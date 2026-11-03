@@ -20,7 +20,7 @@
  * 一置位就在途的 resume / 通道请求全部取消；卸载后才返回的恢复句柄在 `wake` 里
  * 就地释放，不会落进已经清空的集合。
  *
- * @module dsh-plugin-session-messaging/infrastructure/cordis-delivery-gateway
+ * @module session-messaging/infrastructure/cordis-delivery-gateway
  */
 
 import type { Context } from '@deepseek-ai/cordis'

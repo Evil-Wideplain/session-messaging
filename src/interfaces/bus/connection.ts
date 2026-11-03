@@ -10,7 +10,7 @@
  * 用 `setEncoding('utf8')` 让 Node 内部用 StringDecoder 跨 chunk 保持 UTF-8 状态：
  * 手工 `chunk.toString('utf8')` 会把跨 chunk 的多字节字符解成 U+FFFD，中文正文乱码。
  *
- * @module dsh-plugin-session-messaging/interfaces/bus/connection
+ * @module session-messaging/interfaces/bus/connection
  */
 
 import type { Socket } from 'node:net'

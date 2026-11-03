@@ -7,7 +7,7 @@
  * 只描述业务概念，不持有 Cordis 上下文或 Agent 实例——在线状态是快照，
  * 真正的运行时对象由基础设施层按需读取。
  *
- * @module dsh-plugin-session-messaging/domain/target
+ * @module session-messaging/domain/target
  */
 
 /** 会话在寻址语境中的参与关系。 */

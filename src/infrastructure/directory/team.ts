@@ -5,7 +5,7 @@
  * 领域层只消费事实，不碰 Cordis 服务。名册里的 inactive 队友即使没有加载也会
  * 成为可寻址目标，由 team mailbox 冷恢复。
  *
- * @module dsh-plugin-session-messaging/infrastructure/directory/team
+ * @module session-messaging/infrastructure/directory/team
  */
 
 import type { Caller } from '../../application/ports.ts'

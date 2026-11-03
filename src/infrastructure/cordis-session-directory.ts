@@ -15,7 +15,7 @@
  * 本文件只保留门面职责：持有上下文与标题缓存，把投影细节委托给 `directory/`
  * 子模块；公开方法签名不变。
  *
- * @module dsh-plugin-session-messaging/infrastructure/cordis-session-directory
+ * @module session-messaging/infrastructure/cordis-session-directory
  */
 
 import type { Context } from '@deepseek-ai/cordis'

@@ -8,7 +8,7 @@
  * 发送方，必须过 `inlineText` 并限长，否则一条带换行的 summary 就能伪造出
  * 「已 accepted」的结果行或塞进超长指令。
  *
- * @module dsh-plugin-session-messaging/interfaces/tools/review
+ * @module session-messaging/interfaces/tools/review
  */
 
 import type { MessagingService } from '../../application/messaging-service.ts'

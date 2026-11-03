@@ -6,7 +6,7 @@
  * {@link busEndpoint}）。所有目录都以 0700 权限创建；bus 端点目录用严格模式，
  * 权限收紧失败时宁可让总线不启动。
  *
- * @module dsh-plugin-session-messaging/infrastructure/paths
+ * @module session-messaging/infrastructure/paths
  */
 
 import { createHash } from 'node:crypto'

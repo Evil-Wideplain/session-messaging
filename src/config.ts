@@ -3,7 +3,7 @@
  *
  * 字段刻意保持扁平：bundle patch 只提供部分值，其余由 schemastery 填默认。
  *
- * @module dsh-plugin-session-messaging/config
+ * @module session-messaging/config
  */
 
 import z from '@deepseek-ai/schemastery'

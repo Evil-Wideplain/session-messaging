@@ -5,7 +5,7 @@
  * 双方会话标识与摘要，且用 NUL 分隔各段，避免拼接边界产生歧义
  * （例如正文 "a" + 摘要 "b" 与正文 "ab" 撞成同一个键）。
  *
- * @module dsh-plugin-session-messaging/application/messaging/dedupe
+ * @module session-messaging/application/messaging/dedupe
  */
 
 import { createHash } from 'node:crypto'

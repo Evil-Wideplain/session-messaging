@@ -9,7 +9,7 @@
  * title、cwd 等字段来自其他会话或模型本身：它们只要带一个换行，就能伪造出
  * 新的结果行（例如假冒一条已裁决记录），所以动态文本一律先过 {@link inlineText}。
  *
- * @module dsh-plugin-session-messaging/interfaces/tools/shared
+ * @module session-messaging/interfaces/tools/shared
  */
 
 import type { ReviewOutcome } from '../../application/dto.ts'

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * dsh-plugin-session-messaging 的真运行时端到端验证。
+ * session-messaging 的真运行时端到端验证。
  *
  * 与 `npm test`（用进程内假 DSH 上下文驱动构建产物）不同，本脚本启动真实的
  * `dsh` CLI，在隔离 profile 上让真实模型自行决定调用真实工具，验证那些只在
@@ -69,7 +69,8 @@ async function main() {
     ? `${dumped.length} chars`
     : `exit ${dump.status}: ${(dump.stderr ?? '').trim().split('\n').slice(-2).join(' | ')}`
   record('composed config carries inbound: hold', /inbound: hold/u.test(dumped), dumpDetail)
-  record('composed config mounts the plugin', /id: session-messaging[\s\S]{0,200}?name: dsh-plugin-session-messaging/u.test(dumped))
+  record('composed config mounts both rows', /id: session-messaging[\s\S]{0,200}?name: session-messaging/u.test(dumped)
+    && /id: session-creation[\s\S]{0,200}?name: session-messaging\/creation/u.test(dumped))
 
   // 1. 通过一次普通 headless 轮次创建目标会话。
   const target = runHeadless('01-target-create', 'Reply with exactly READY-B and nothing else.')

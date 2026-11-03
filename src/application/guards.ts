@@ -4,7 +4,7 @@
  * 两者都是进程内状态、与领域规则无关的横切策略，因此放在应用层；
  * 换实现（如分布式限流）不影响领域模型和工具契约。
  *
- * @module dsh-plugin-session-messaging/application/guards
+ * @module session-messaging/application/guards
  */
 
 /** 进程内状态的上限；超过后按时间淘汰，避免长期运行后无界增长。 */

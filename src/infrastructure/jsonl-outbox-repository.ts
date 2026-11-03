@@ -15,7 +15,7 @@
  * 形同虚设。已知终态（delivered/expired/refused）才把记录移出账本；未知 op 忽略，
  * 避免拼错或未来新增的 op 把消息错误地当成已终结。
  *
- * @module dsh-plugin-session-messaging/infrastructure/jsonl-outbox-repository
+ * @module session-messaging/infrastructure/jsonl-outbox-repository
  */
 
 import type { OutboxEntry } from '../domain/outbox.ts'

@@ -5,7 +5,7 @@
  * 各抄一份（`messageOf` 一度有 5 份副本）；它们不依赖任何 IO 或运行时服务，
  * 放在领域层可以被所有层安全复用，也避免各副本随重构漂移。
  *
- * @module dsh-plugin-session-messaging/domain/util
+ * @module session-messaging/domain/util
  */
 
 /**

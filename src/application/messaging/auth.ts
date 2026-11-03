@@ -5,7 +5,7 @@
  * 授权判定本身是领域纯函数（`domain/authorization.ts`），本模块只负责
  * 把依赖与配置投影成它的输入，并给用例提供统一的拒绝说明。
  *
- * @module dsh-plugin-session-messaging/application/messaging/auth
+ * @module session-messaging/application/messaging/auth
  */
 
 import type { CallerIdentity } from '../../domain/authorization.ts'

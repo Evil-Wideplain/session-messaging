@@ -5,7 +5,7 @@
  * 归档门禁只在会话日志里以 `turn/end { reason: { kind: 'blocked' } }` 收口。
  * 两种信号都要抓，否则投递会误以为消息已送达（它其实没进历史）。
  *
- * @module dsh-plugin-session-messaging/infrastructure/delivery/failure-probe
+ * @module session-messaging/infrastructure/delivery/failure-probe
  */
 
 import type { Context } from '@deepseek-ai/cordis'

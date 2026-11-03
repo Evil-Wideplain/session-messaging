@@ -7,7 +7,7 @@
  *
  * 任何一步失败都只记日志：会话已经存在，这些步骤不该把创建结果改判成失败。
  *
- * @module dsh-plugin-session-messaging/infrastructure/session-finish
+ * @module session-messaging/infrastructure/session-finish
  */
 
 import type { Context } from '@deepseek-ai/cordis'
