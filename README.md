@@ -1,8 +1,55 @@
 # session-messaging
 
-DSH bundle 插件：让同一个 DSH 进程里的会话可以**互相寻址、互相唤醒、互相发消息**。
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen.svg)](https://nodejs.org)
+[![DSH plugin](https://img.shields.io/badge/DSH-plugin-4B6BFB.svg)](https://github.com/Evil-Wideplain/session-messaging)
+[![GitHub stars](https://img.shields.io/github/stars/Evil-Wideplain/session-messaging?style=social)](https://github.com/Evil-Wideplain/session-messaging)
 
-提供四个模型可调用工具和一个给 shell 脚本用的本机通道：
+**DSH（DeepSeek Harness）插件：跨会话消息传递（cross-session messaging）。**
+让同一个 DSH 进程里的会话**互相寻址、互相唤醒、互相发消息**，也让 bash / pwsh 脚本通过本机总线参与协作。
+
+> **English**: Cross-session messaging for DSH (DeepSeek Harness) agents — lets sessions in the same
+> process address, wake and message each other, approve inbound messages, and send messages from
+> bash / pwsh scripts. Built for multi-agent collaboration, Agent Teams and session orchestration.
+
+> 状态：v0.1.0（早期版本，接口可能调整）。运行时基线为 DSH 0.2.x、Node.js ≥ 22。
+
+## 目录
+
+- [为什么需要它](#为什么需要它)
+- [能力一览](#能力一览)
+- [快速开始](#快速开始)
+- [工具](#工具)
+  - [`list_session_agents`](#list_session_agents)
+  - [`send_session_message`](#send_session_message)
+  - [`create_session_agent`](#create_session_agent)
+  - [`review_session_messages`](#review_session_messages)
+- [入站审批](#入站审批)
+- [配置](#配置)
+- [本地总线](#本地总线)
+- [授权矩阵](#授权矩阵)
+- [项目结构](#项目结构)
+- [已知限制](#已知限制)
+- [开发](#开发)
+- [延伸阅读](#延伸阅读)
+- [许可证](#许可证)
+
+## 为什么需要它
+
+在一个 DSH 进程里，多个会话并存是常态：GUI 里每个标签页一个会话、Agent Teams 的队友、subagent，
+以及 `dsh headless` 拉起的一次性会话。它们各自有历史、有模型、有工具，但**默认彼此不可见**：
+
+- GUI 标签页之间没法互相通知「接口改完了，帮忙重跑一下 e2e」；
+- Agent Teams 的消息工具绑在团队身份上，平级会话和脚本进不来；
+- subagent 通道只覆盖「直接父 ↔ 直接子」这一层；
+- headless / CI 脚本里没有会话身份，想给某个会话递一句话只能人工切换。
+
+这个插件补的就是这一层：给每个会话一个**地址**（显示名或 session id）、一个**信箱**（inbox），
+以及一套**授权矩阵**（同 workspace / 团队 / 子代理关系），让「任意有权访问的会话」都能被寻址和投递；
+冷会话还能按历史里的模型路由 resume 之后投递。所有写操作先落 JSONL 账本，重启后重放、按 `messageId`
+去重，不会重复投递，也不会静默丢失。
+
+## 能力一览
 
 | 能力 | 形态 |
 |---|---|
@@ -19,93 +66,39 @@ DSH bundle 插件：让同一个 DSH 进程里的会话可以**互相寻址、�
 自己的 continuable subagent 走 `ctx.subagents.sendMessage`，其余走会话 inbox（`Agent.steer`）。
 名册里的 inactive 队友也是可寻址目标，由 team mailbox 冷恢复。
 
-设计与取舍见 [`docs/design/session-messaging-plugin.md`](docs/design/session-messaging-plugin.md)；
-Claude Code 的机制对照见 [`docs/research/claude-code-session-messaging.md`](docs/research/claude-code-session-messaging.md)。
-`create_session_agent` 的独立完整文档见 [`docs/create-session-agent.md`](docs/create-session-agent.md)。
+## 快速开始
 
-## 目录结构
-
-代码按 DDD 分层（领域 / 应用 / 基础设施 / 接口），依赖方向永远指向领域：
-
-```text
-src/
-├─ index.ts                     # 组合包入口（package main）：只转出 entries/messaging
-├─ creation.ts                  # ./creation 子路径入口：只转出 entries/creation
-├─ entries/
-│  ├─ messaging.ts              # 主行 session-messaging：运行时 + 三个工具 + 总线 + 恢复
-│  └─ creation.ts               # 创建行 session-creation：只注册 create_session_agent
-├─ shared/
-│  └─ service.ts                # 跨行服务契约：sessionMessaging（主行 provide）
-├─ composition.ts               # 装配：端口 → 具体适配器
-├─ config.ts                    # 扁平配置 + schemastery schema + 默认值
-├─ types.ts                     # 契约 barrel；类型真身在 types/
-├─ types/                       # session / agent / tools / services / context 声明增补
-├─ domain/                      # 纯业务规则：无 IO、无 Cordis 依赖
-│  ├─ target.ts                 # 会话目标值对象、寻址归一、歧义错误
-│  ├─ authorization.ts          # 授权矩阵（workspace / 团队 / 例外清单）
-│  ├─ routing.ts                # 通道路由：team / subagent / steer
-│  ├─ message.ts                # 消息构造 + messageAccepted 送达判定
-│  ├─ inbound-policy.ts         # 入站三态、审批截止、容量淘汰规则
-│  ├─ held-message.ts           # 待审批消息实体与过期判定
-│  ├─ outbox.ts                 # 出站账本模型（queued/held/终态）
-│  └─ util.ts                   # 跨层纯函数：错误文本化、空白归一
-├─ application/                 # 用例编排 + 端口接口
-│  ├─ messaging-service.ts      # 门面；用例实现在 messaging/
-│  ├─ messaging/                # list / send / review / recover / inbound / rows / auth / dedupe / deps
-│  ├─ session-creation-service.ts  # create：root-only、cwd 授权、限额、首条消息
-│  ├─ session-creation/         # location：位置解析 + workspace 授权
-│  ├─ dto.ts                    # 工具与 bus 的返回形状
-│  ├─ guards.ts                 # 频率限制、正文去重
-│  ├─ ports.ts                  # 消息 / 目录 / 投递 / 创建端口；re-export Workspace 端口
-│  └─ ports-workspace.ts        # WorkspaceResolver / WorkspaceTarget（从 ports.ts 拆出）
-├─ infrastructure/              # 端口实现
-│  ├─ cordis-delivery-gateway.ts   # 门面；投递实现在 delivery/
-│  ├─ delivery/                 # channels / inbox / wake / failure-probe / model-route / shared
-│  ├─ cordis-session-directory.ts  # 门面；目录实现在 directory/
-│  ├─ directory/                # live / cold / team / archive / shared
-│  ├─ cordis-session-creator.ts    # sessionController.create + followup + preset/权限/标题/attach
-│  ├─ session-finish.ts         # 创建后收尾：权限预设 / 标题 / flush（尽力而为）
-│  ├─ jsonl-ledger.ts            # 追加式 JSONL 文件原语（换行修复/原子重写/读缓存）
-│  ├─ jsonl-outbox-repository.ts
-│  ├─ jsonl-inbound-repository.ts
-│  ├─ persisted-session.ts      # 冷会话短读：header / events / title / 模型路由
-│  └─ paths.ts                  # DSH_HOME、socket/outbox/inbound 目录
-└─ interfaces/                  # 外部入口
-   ├─ model-tools.ts            # 工具 barrel；每个工具在 tools/
-   ├─ tools/                    # shared / list / send / review / create-session
-   ├─ local-bus.ts              # 门面；总线实现在 bus/
-   └─ bus/                      # protocol / server / listener / connection / shell-env
-tests/
-├─ support/                     # 共享夹具（不参与用例收集）
-├─ messaging-*.test.ts          # 寻址/发送/路由/入站/恢复/冷唤醒/列表
-├─ model-tools-*.test.ts        # 四个工具的 schema / render / execute
-├─ create-session-*.test.ts     # 创建会话：服务 / 适配器 / 工具
-├─ routing.test.ts、approval.test.ts
-├─ e2e-package-*.test.ts        # 构建产物级 e2e（lib/index.js + 真 socket）
-└─ bus*.test.ts、ledger.test.ts、paths.test.ts
-scripts/
-├─ e2e-runtime.mjs              # 真运行时 e2e 流程
-└─ e2e/                         # env / profile / headless / checks
-cordis.patch.yml                # bundle 层插入插件行
-locale/{en,zh}.json             # 插件（组合包）与主行组件的标题/描述
-locale/creation/{en,zh}.json    # 子路径组件（session-creation）的标题/描述
-```
-
-分层约定：`domain/` 不 import 任何 Cordis 或 `node:fs`；`application/` 只依赖
-`domain/`、`application/ports.ts` 与 `types.ts` 的共享契约（外加 `config.ts` 的类型和
-`node:crypto` / `node:path` 这类纯标准库计算）；基础设施实现端口；接口层只做参数校验与 DTO 投影，
-本地总线传输是唯一例外（直接用 Cordis 上下文与 `infrastructure/paths`）；`index.ts` 与
-`composition.ts` 是唯一允许 new 具体适配器的地方。代码注释统一用中文。
-单个 TS/JS 文件不超过 200 行：超过时按职责拆子模块，原文件保留为 barrel 或门面。
-
-## 安装
+前置条件：Node.js ≥ 22、pnpm、可用的 `dsh` CLI（DSH 0.2.x）。Windows / macOS / Linux 都支持，
+本地总线在 Windows 上用命名管道、在 POSIX 上用 unix socket，无需额外配置。
 
 ```sh
+# 1. 克隆并构建
+git clone https://github.com/Evil-Wideplain/session-messaging.git
+cd session-messaging
 pnpm install
 pnpm run build
-dsh plugin --profile demo add .
+
+# 2. 装进一个独立 profile，然后启动
+dsh plugin --profile demo add "$PWD"
 dsh --profile demo
 ```
+
+自检（贡献代码或排查环境时）：
+
+```sh
+pnpm run typecheck
+pnpm test          # 202 个用例通过（共 203，1 个平台相关跳过）：单测 + 构建产物级 e2e（会先 build）
+```
+
+装好之后，在任意会话里用自然语言就能触发：
+
+```text
+列出这个 DSH 进程里其他可见会话，然后给「前端联调」发一条消息：
+接口改完了，麻烦重跑一下 e2e
+```
+
+模型会先调 `list_session_agents`，再调 `send_session_message`。脚本通道见
+[本地总线](#本地总线)。
 
 插件通过 `cordis.patch.yml` 插入组合。包内拆成两个装载行（插件页上是两个独立组件）：
 
@@ -220,9 +213,9 @@ profile 侧别名才能解析。
 返回 `{ held, outcomes }`：`held` 是仍待审批的消息（`sender`、`summary`、`preview`、`expires_at`），
 `outcomes` 是本次动作的结果（`accepted` / `refused` / `denied` / `expired` / `failed` / `not_found`；`denied` 表示 accept 时重新授权失败，`not_found` 表示没有匹配的待审消息）。
 
-## 入站审批（accept / hold / refuse）
+## 入站审批
 
-对应 Claude Code 的 `crossSessionInbound` 三态开关，默认 `accept`：
+入站策略分 `accept` / `hold` / `refuse` 三态，对应 Claude Code 的 `crossSessionInbound` 开关，默认 `accept`：
 
 | 策略 | 行为 |
 |---|---|
@@ -278,9 +271,10 @@ profile 侧别名才能解析。
 
 配置属于主行 `session-messaging`；`session-creation` 行没有自己的配置，创建行为随主行配置。
 
-## bash / pwsh 通道
+## 本地总线
 
-插件启动后在 `ctx.shellEnv` 里注册两个变量，每次 bash/pwsh 工具调用都会注入：
+除了模型工具，bash / pwsh 脚本也能发消息。插件启动后在 `ctx.shellEnv` 里注册两个变量，每次 bash/pwsh
+工具调用都会注入：
 
 ```text
 DSH_SESSION_MESSAGING_SOCKET   # POSIX: /tmp/dsh-session-messaging-<uid>/bus.sock
@@ -350,6 +344,81 @@ Claude Code 是每会话一个 inbox socket：脚本拿到的就是自己会话�
 
 身份只来自运行时：工具通道是 `exec.agent`，脚本通道是 bus token；消息正文/`source` 里的任何字段都不能冒充发送者。
 
+## 项目结构
+
+代码按 DDD 分层（领域 / 应用 / 基础设施 / 接口），依赖方向永远指向领域：
+
+```text
+src/
+├─ index.ts                     # 组合包入口（package main）：只转出 entries/messaging
+├─ creation.ts                  # ./creation 子路径入口：只转出 entries/creation
+├─ entries/
+│  ├─ messaging.ts              # 主行 session-messaging：运行时 + 三个工具 + 总线 + 恢复
+│  └─ creation.ts               # 创建行 session-creation：只注册 create_session_agent
+├─ shared/
+│  └─ service.ts                # 跨行服务契约：sessionMessaging（主行 provide）
+├─ composition.ts               # 装配：端口 → 具体适配器
+├─ config.ts                    # 扁平配置 + schemastery schema + 默认值
+├─ types.ts                     # 契约 barrel；类型真身在 types/
+├─ types/                       # session / agent / tools / services / context 声明增补
+├─ domain/                      # 纯业务规则：无 IO、无 Cordis 依赖
+│  ├─ target.ts                 # 会话目标值对象、寻址归一、歧义错误
+│  ├─ authorization.ts          # 授权矩阵（workspace / 团队 / 例外清单）
+│  ├─ routing.ts                # 通道路由：team / subagent / steer
+│  ├─ message.ts                # 消息构造 + messageAccepted 送达判定
+│  ├─ inbound-policy.ts         # 入站三态、审批截止、容量淘汰规则
+│  ├─ held-message.ts           # 待审批消息实体与过期判定
+│  ├─ outbox.ts                 # 出站账本模型（queued/held/终态）
+│  └─ util.ts                   # 跨层纯函数：错误文本化、空白归一
+├─ application/                 # 用例编排 + 端口接口
+│  ├─ messaging-service.ts      # 门面；用例实现在 messaging/
+│  ├─ messaging/                # list / send / review / recover / inbound / rows / auth / dedupe / deps
+│  ├─ session-creation-service.ts  # create：root-only、cwd 授权、限额、首条消息
+│  ├─ session-creation/         # location：位置解析 + workspace 授权
+│  ├─ dto.ts                    # 工具与 bus 的返回形状
+│  ├─ guards.ts                 # 频率限制、正文去重
+│  ├─ ports.ts                  # 消息 / 目录 / 投递 / 创建端口；re-export Workspace 端口
+│  └─ ports-workspace.ts        # WorkspaceResolver / WorkspaceTarget（从 ports.ts 拆出）
+├─ infrastructure/              # 端口实现
+│  ├─ cordis-delivery-gateway.ts   # 门面；投递实现在 delivery/
+│  ├─ delivery/                 # channels / inbox / wake / failure-probe / model-route / shared
+│  ├─ cordis-session-directory.ts  # 门面；目录实现在 directory/
+│  ├─ directory/                # live / cold / team / archive / shared
+│  ├─ cordis-session-creator.ts    # sessionController.create + followup + preset/权限/标题/attach
+│  ├─ session-finish.ts         # 创建后收尾：权限预设 / 标题 / flush（尽力而为）
+│  ├─ jsonl-ledger.ts            # 追加式 JSONL 文件原语（换行修复/原子重写/读缓存）
+│  ├─ jsonl-outbox-repository.ts
+│  ├─ jsonl-inbound-repository.ts
+│  ├─ persisted-session.ts      # 冷会话短读：header / events / title / 模型路由
+│  └─ paths.ts                  # DSH_HOME、socket/outbox/inbound 目录
+└─ interfaces/                  # 外部入口
+   ├─ model-tools.ts            # 工具 barrel；每个工具在 tools/
+   ├─ tools/                    # shared / list / send / review / create-session
+   ├─ local-bus.ts              # 门面；总线实现在 bus/
+   └─ bus/                      # protocol / server / listener / connection / shell-env
+tests/
+├─ support/                     # 共享夹具（不参与用例收集）
+├─ messaging-*.test.ts          # 寻址/发送/路由/入站/恢复/冷唤醒/列表
+├─ model-tools-*.test.ts        # 四个工具的 schema / render / execute
+├─ create-session-*.test.ts     # 创建会话：服务 / 适配器 / 工具
+├─ routing.test.ts、approval.test.ts
+├─ e2e-package-*.test.ts        # 构建产物级 e2e（lib/index.js + 真 socket）
+└─ bus*.test.ts、ledger.test.ts、paths.test.ts
+scripts/
+├─ e2e-runtime.mjs              # 真运行时 e2e 流程
+└─ e2e/                         # env / profile / headless / checks
+cordis.patch.yml                # bundle 层插入插件行
+locale/{en,zh}.json             # 插件（组合包）与主行组件的标题/描述
+locale/creation/{en,zh}.json    # 子路径组件（session-creation）的标题/描述
+```
+
+分层约定：`domain/` 不 import 任何 Cordis 或 `node:fs`；`application/` 只依赖
+`domain/`、`application/ports.ts` 与 `types.ts` 的共享契约（外加 `config.ts` 的类型和
+`node:crypto` / `node:path` 这类纯标准库计算）；基础设施实现端口；接口层只做参数校验与 DTO 投影，
+本地总线传输是唯一例外（直接用 Cordis 上下文与 `infrastructure/paths`）；`index.ts` 与
+`composition.ts` 是唯一允许 new 具体适配器的地方。代码注释统一用中文。
+单个 TS/JS 文件不超过 200 行：超过时按职责拆子模块，原文件保留为 barrel 或门面。
+
 ## 已知限制
 
 - 一次性 `dsh headless` 进程里冷唤醒的目标 turn 可能随宿主退出被中断；消息已进入 inbox/历史就确认，
@@ -367,7 +436,7 @@ Claude Code 是每会话一个 inbox socket：脚本拿到的就是自己会话�
 
 ```sh
 pnpm run typecheck
-pnpm test          # 198 个用例通过（共 199，1 个平台相关跳过）：单测 + 构建产物级 e2e（会先 build）
+pnpm test          # 202 个用例通过（共 203，1 个平台相关跳过）：单测 + 构建产物级 e2e（会先 build）
 pnpm run build
 ```
 
@@ -405,9 +474,8 @@ DEEPSEEK_API_KEY=... node scripts/e2e-runtime.mjs
 5. `05-target-expire`：等过截止时间，断言 `review` 报 `expired` 且消息从未进入目标会话。
 
 脚本共 18 个 `record()` 检查（凭据、隔离 profile、`zstd`、patch 是否生效到组合配置、目标会话建立、
-`held` 不入会话、accept 入历史、过期不入会话等）。**本轮只把脚本拆到 `scripts/e2e/`
-（env / profile / headless / checks），没有重跑官方 e2e**（`DEEPSEEK_API_KEY` 额度不足）；
-上一次实跑是 2026-11-01 的旧脚本：17/17 检查通过，覆盖场景与上面 5 个阶段相同。
+`held` 不入会话、accept 入历史、过期不入会话等）。最近一次实跑是 2026-11-01，17/17 通过；整理仓库时只把
+脚本拆到 `scripts/e2e/`（env / profile / headless / checks），本轮没有重跑（`DEEPSEEK_API_KEY` 额度不足）。
 
 ### 本地模型 e2e（开发期脚本，不随仓库提交）
 
@@ -419,3 +487,18 @@ DEEPSEEK_API_KEY=... node scripts/e2e-runtime.mjs
 产物在 `e2e-workspace/artifacts/`（每次 run 的 `--json` 事件流）。清理：
 `rm -rf e2e-workspace "$DSH_HOME/profiles/session-messaging-e2e"`，并按需删除
 `$DSH_HOME/sessions/*/session-<e2e id>/`。
+
+## 延伸阅读
+
+- 设计与取舍：[`docs/design/session-messaging-plugin.md`](docs/design/session-messaging-plugin.md)；
+  投递/持久化方案：[`docs/design/session-messaging-plan.md`](docs/design/session-messaging-plan.md)、
+  [`docs/design/session-bus.md`](docs/design/session-bus.md)
+- Claude Code 的机制对照：[`docs/research/claude-code-session-messaging.md`](docs/research/claude-code-session-messaging.md)
+- `create_session_agent` 完整文档：[`docs/create-session-agent.md`](docs/create-session-agent.md)
+- DSH 能力调研总览：[`docs/research/README.md`](docs/research/README.md)
+- Session Query（会话历史检索）设计与实现：[`docs/dsh-session-query-设计与实现.md`](docs/dsh-session-query-设计与实现.md)
+
+## 许可证
+
+[MIT](./LICENSE)。欢迎 issue / PR；使用中遇到投递异常时，附上 `$DSH_HOME/session-messaging/` 下的
+outbox / inbound 账本片段会更容易定位。

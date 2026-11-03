@@ -1,7 +1,7 @@
 {
   "name": "session-messaging",
   "version": "0.1.0",
-  "description": "DSH plugin: cross-session messaging (address sessions, send messages, approve inbound messages) with a local bus for bash/pwsh scripts, plus a separately toggleable session-creation component.",
+  "description": "DSH (DeepSeek Harness) plugin for cross-session messaging: address, message and wake AI agent sessions, approve inbound messages, and send from bash/pwsh scripts. Includes a separately toggleable session-creation component.",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -44,15 +44,30 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/dsh-plugin-session-messaging.git"
+    "url": "git+https://github.com/Evil-Wideplain/session-messaging.git"
+  },
+  "homepage": "https://github.com/Evil-Wideplain/session-messaging#readme",
+  "bugs": {
+    "url": "https://github.com/Evil-Wideplain/session-messaging/issues"
   },
   "keywords": [
     "dsh",
     "dsh-plugin",
-    "agent",
-    "session",
-    "messaging",
-    "inter-agent"
+    "deepseek",
+    "deepseek-harness",
+    "ai-agents",
+    "multi-agent",
+    "agent-teams",
+    "agent-to-agent",
+    "agent-orchestration",
+    "cross-session",
+    "session-messaging",
+    "inter-agent-communication",
+    "session-management",
+    "cordis",
+    "local-bus",
+    "typescript",
+    "nodejs"
   ],
   "author": "DSH contributors",
   "dependencies": {
