@@ -3,7 +3,8 @@
  *
  * 账本与 bus 的落点：默认在 `$DSH_HOME/session-messaging/` 下；POSIX 的 bus
  * 端点放临时目录，Windows 用命名管道（管道名带 socketDir 的哈希，见
- * {@link busEndpoint}）。所有目录都以 0700 权限创建。
+ * {@link busEndpoint}）。所有目录都以 0700 权限创建；bus 端点目录用严格模式，
+ * 权限收紧失败时宁可让总线不启动。
  *
  * @module dsh-plugin-session-messaging/infrastructure/paths
  */
@@ -92,21 +93,37 @@ export function busEndpoint(dir: string): string {
     : join(dir, 'bus.sock')
 }
 
+/** `ensurePrivateDir` 的选项。 */
+export interface EnsurePrivateDirOptions {
+  /**
+   * 严格模式：chmod 失败时抛错，而不是只失去额外收紧。
+   *
+   * bus 端点目录必须真的只有属主可访问（socket 文件与 token 都在里面），门禁
+   * 失败时宁可让总线不启动；账本目录用宽松模式，权限不足不该阻断插件。
+   */
+  readonly strict?: boolean
+}
+
 /**
  * 递归创建目录并收紧为属主专用权限。
  *
  * `mkdirSync` 的 `mode` 只对「本次新建」生效：目录已存在时（例如同机其他用户
  * 在共享临时目录里预建了同名目录）权限会原样保留，消息正文就会落到别人可读的
- * 位置。因此已存在的目录要显式 chmod 一次；chmod 失败（非属主/Windows 无语义）
- * 只忽略，不阻断插件启动。
+ * 位置。因此已存在的目录要显式 chmod 一次；默认忽略 chmod 失败（非属主/Windows
+ * 无语义），`strict` 模式下则抛错，由调用方决定是否继续启动。
  * @param dir - 目标目录。
+ * @param options - `strict: true` 时把 chmod 失败升级为错误。
+ * @throws 严格模式下目录权限无法收紧到 0700。
  */
-export function ensurePrivateDir(dir: string): void {
+export function ensurePrivateDir(dir: string, options: EnsurePrivateDirOptions = {}): void {
   mkdirSync(dir, { recursive: true, mode: 0o700 })
   if (process.platform === 'win32') return
   try {
     chmodSync(dir, 0o700)
-  } catch {
+  } catch (error) {
+    if (options.strict === true) {
+      throw new Error(`无法把目录收紧为属主专用权限：${dir}`, { cause: error })
+    }
     // 非属主或文件系统不支持权限位：保持现状，仅失去额外收紧。
   }
 }

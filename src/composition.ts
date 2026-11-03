@@ -11,8 +11,11 @@ import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ResolvedConfig } from './config.ts'
 import { MessagingService } from './application/messaging-service.ts'
+import { SessionCreationService } from './application/session-creation-service.ts'
 import type { InboundRepository, OutboxRepository } from './application/ports.ts'
 import { CordisDeliveryGateway } from './infrastructure/cordis-delivery-gateway.ts'
+import { CordisSessionCreator } from './infrastructure/cordis-session-creator.ts'
+import { CordisWorkspaceResolver } from './infrastructure/cordis-workspace-resolver.ts'
 import { CordisSessionDirectory } from './infrastructure/cordis-session-directory.ts'
 import { JsonlInboundRepository } from './infrastructure/jsonl-inbound-repository.ts'
 import { JsonlOutboxRepository } from './infrastructure/jsonl-outbox-repository.ts'
@@ -22,6 +25,8 @@ import { defaultInboundDir, defaultOutboxDir } from './infrastructure/paths.ts'
 export interface MessagingRuntime {
   /** 应用服务（工具/总线入口）。 */
   readonly service: MessagingService
+  /** 创建会话应用服务。 */
+  readonly creation: SessionCreationService
   /** 出站账本目录（诊断/测试用）。 */
   readonly outboxDir: string
   /** 入站账本目录（诊断/测试用）。 */
@@ -48,6 +53,9 @@ export function createMessagingRuntime(ctx: Context, config: ResolvedConfig): Me
   const inbounds = new Map<string, InboundRepository>()
   const directory = new CordisSessionDirectory(ctx)
   const gateway = new CordisDeliveryGateway(ctx, log)
+  const creator = new CordisSessionCreator(ctx, log)
+  const workspaces = new CordisWorkspaceResolver(ctx, log)
+  const creation = new SessionCreationService({ config, directory, creator, workspaces, log })
   const service = new MessagingService({
     config,
     directory,
@@ -68,5 +76,5 @@ export function createMessagingRuntime(ctx: Context, config: ResolvedConfig): Me
       return created
     },
   })
-  return { service, outboxDir, inboundDir, dispose: () => gateway.dispose() }
+  return { service, creation, outboxDir, inboundDir, dispose: () => gateway.dispose() }
 }

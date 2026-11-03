@@ -2,13 +2,14 @@
 
 DSH bundle 插件：让同一个 DSH 进程里的会话可以**互相寻址、互相唤醒、互相发消息**。
 
-提供三个模型可调用工具和一个给 shell 脚本用的本机通道：
+提供四个模型可调用工具和一个给 shell 脚本用的本机通道：
 
 | 能力 | 形态 |
 |---|---|
 | 列出可发送的会话 | 工具 `list_session_agents` |
 | 给会话发消息（含冷会话唤醒、官方通道路由） | 工具 `send_session_message` |
 | 审批别人发给你的消息（入站 `accept/hold/refuse`） | 工具 `review_session_messages` |
+| 新建一个普通会话并投递第一条消息 | 工具 `create_session_agent` |
 | bash / pwsh 脚本发消息 | 每用户一个本地 bus socket + 每会话 token（`ctx.shellEnv` 注入） |
 
 投递优先走官方通道：同团队成员走 `ctx.agentTeams.sendMessage`（按成员名，优先于 subagent 通道），
@@ -17,6 +18,7 @@ DSH bundle 插件：让同一个 DSH 进程里的会话可以**互相寻址、�
 
 设计与取舍见 [`docs/design/dsh-session-messaging-plugin.md`](docs/design/dsh-session-messaging-plugin.md)；
 Claude Code 的机制对照见 [`docs/research/claude-code-session-messaging.md`](docs/research/claude-code-session-messaging.md)。
+`create_session_agent` 的独立完整文档见 [`docs/create-session-agent.md`](docs/create-session-agent.md)。
 
 ## 目录结构
 
@@ -27,7 +29,8 @@ src/
 ├─ index.ts                     # 组合根：name / inject / Config / apply + 恢复钩子
 ├─ composition.ts               # 装配：端口 → 具体适配器
 ├─ config.ts                    # 扁平配置 + schemastery schema + 默认值
-├─ types.ts                     # DSH 服务结构化契约 + Cordis declaration merging
+├─ types.ts                     # 契约 barrel；类型真身在 types/
+├─ types/                       # session / agent / tools / services / context 声明增补
 ├─ domain/                      # 纯业务规则：无 IO、无 Cordis 依赖
 │  ├─ target.ts                 # 会话目标值对象、寻址归一、歧义错误
 │  ├─ authorization.ts          # 授权矩阵（workspace / 团队 / 例外清单）
@@ -35,36 +38,54 @@ src/
 │  ├─ message.ts                # 消息构造 + messageAccepted 送达判定
 │  ├─ inbound-policy.ts         # 入站三态、审批截止、容量淘汰规则
 │  ├─ held-message.ts           # 待审批消息实体与过期判定
-│  └─ outbox.ts                 # 出站账本模型（queued/held/终态）
+│  ├─ outbox.ts                 # 出站账本模型（queued/held/终态）
+│  └─ util.ts                   # 跨层纯函数：错误文本化、空白归一
 ├─ application/                 # 用例编排 + 端口接口
-│  ├─ messaging-service.ts      # list / send / review / recover
+│  ├─ messaging-service.ts      # 门面；用例实现在 messaging/
+│  ├─ messaging/                # list / send / review / recover / inbound / rows / auth / dedupe / deps
+│  ├─ session-creation-service.ts  # create：root-only、cwd 授权、限额、首条消息
+│  ├─ session-creation/         # location：位置解析 + workspace 授权
 │  ├─ dto.ts                    # 工具与 bus 的返回形状
 │  ├─ guards.ts                 # 频率限制、正文去重
-│  └─ ports.ts                  # OutboxRepository / InboundRepository / SessionDirectory / DeliveryGateway
+│  ├─ ports.ts                  # 消息 / 目录 / 投递 / 创建端口；re-export Workspace 端口
+│  └─ ports-workspace.ts        # WorkspaceResolver / WorkspaceTarget（从 ports.ts 拆出）
 ├─ infrastructure/              # 端口实现
+│  ├─ cordis-delivery-gateway.ts   # 门面；投递实现在 delivery/
+│  ├─ delivery/                 # channels / inbox / wake / failure-probe / model-route / shared
+│  ├─ cordis-session-directory.ts  # 门面；目录实现在 directory/
+│  ├─ directory/                # live / cold / team / archive / shared
+│  ├─ cordis-session-creator.ts    # sessionController.create + followup + preset/权限/标题/attach
+│  ├─ session-finish.ts         # 创建后收尾：权限预设 / 标题 / flush（尽力而为）
 │  ├─ jsonl-ledger.ts            # 追加式 JSONL 文件原语（换行修复/原子重写/读缓存）
 │  ├─ jsonl-outbox-repository.ts
 │  ├─ jsonl-inbound-repository.ts
-│  ├─ cordis-session-directory.ts  # 在线/冷会话 → SessionTarget，团队名册查询
-│  ├─ cordis-delivery-gateway.ts   # 官方通道、inbox、冷唤醒
 │  ├─ persisted-session.ts      # 冷会话短读：header / events / title / 模型路由
 │  └─ paths.ts                  # DSH_HOME、socket/outbox/inbound 目录
 └─ interfaces/                  # 外部入口
-   ├─ model-tools.ts            # 三个工具的 JSON Schema 与参数校验
-   └─ local-bus.ts              # 每用户 bus server + shellEnv 注入
-tests/messaging.test.ts       # 领域 + 服务单测（寻址/授权/投递/重放）
-tests/routing-approval.test.ts # 通道路由 + 入站审批单测
-tests/e2e-package.test.ts     # 构建产物级 e2e（lib/index.js + 真 socket）
-tests/bus.test.ts             # bus 协议与 shellEnv 注入单测
-tests/bus-protocol.test.ts    # 总线 UTF-8 分块、参数校验、端点归属
-tests/ledger.test.ts          # JSONL 账本残行修复/原子压缩/路径穿越
-scripts/e2e-runtime.mjs       # 真运行时 e2e（dsh CLI + 真模型）
-cordis.patch.yml              # bundle 层插入插件行
+   ├─ model-tools.ts            # 工具 barrel；每个工具在 tools/
+   ├─ tools/                    # shared / list / send / review / create-session
+   ├─ local-bus.ts              # 门面；总线实现在 bus/
+   └─ bus/                      # protocol / server / listener / connection / shell-env
+tests/
+├─ support/                     # 共享夹具（不参与用例收集）
+├─ messaging-*.test.ts          # 寻址/发送/路由/入站/恢复/冷唤醒/列表
+├─ model-tools-*.test.ts        # 四个工具的 schema / render / execute
+├─ create-session-*.test.ts     # 创建会话：服务 / 适配器 / 工具
+├─ routing.test.ts、approval.test.ts
+├─ e2e-package-*.test.ts        # 构建产物级 e2e（lib/index.js + 真 socket）
+└─ bus*.test.ts、ledger.test.ts、paths.test.ts
+scripts/
+├─ e2e-runtime.mjs              # 真运行时 e2e 流程
+└─ e2e/                         # env / profile / headless / checks
+cordis.patch.yml                # bundle 层插入插件行
 ```
 
 分层约定：`domain/` 不 import 任何 Cordis 或 `node:fs`；`application/` 只依赖
-`domain/` 与 `application/ports.ts`；基础设施实现端口；接口层只做参数校验与 DTO 投影；
-`index.ts` 与 `composition.ts` 是唯一允许 new 具体适配器的地方。代码注释统一用中文。
+`domain/`、`application/ports.ts` 与 `types.ts` 的共享契约（外加 `config.ts` 的类型和
+`node:crypto` / `node:path` 这类纯标准库计算）；基础设施实现端口；接口层只做参数校验与 DTO 投影，
+本地总线传输是唯一例外（直接用 Cordis 上下文与 `infrastructure/paths`）；`index.ts` 与
+`composition.ts` 是唯一允许 new 具体适配器的地方。代码注释统一用中文。
+单个 TS/JS 文件不超过 200 行：超过时按职责拆子模块，原文件保留为 barrel 或门面。
 
 ## 安装
 
@@ -142,6 +163,25 @@ dsh --profile demo
   两者都没有则拒绝唤醒并保持 `queued`——用无路由实例唤醒会在 prompt 组装阶段失败并吞掉消息。
   preset 按历史记录挂载，同一目标并发发送只 resume 一次。
 
+### `create_session_agent`
+
+创建**普通（root）会话**并把第一条消息投递进去；创建后它就是一个平等的会话，可以用
+`list_session_agents` 看到、用 `send_session_message` 继续控制。工具在首条消息被接纳后返回，
+不等待第一轮结束。
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `prompt` | string，必填 | 新会话收到的第一条消息；按跨会话消息带来源框架 |
+| `cwd` | string，可选 | 工作目录（绝对路径）；缺省为调用方自己的工作目录。精确等于某个工作区根目录时会归入该工作区 |
+| `workspace` | string，可选 | 目标工作区：工作区 id，或已登记工作区的绝对路径；会话建在其根目录并归入该工作区。与 `cwd` 同时给出时必须指向同一目录 |
+| `ensure_workspace` | boolean，可选 | 配合 `cwd` / `workspace` 路径：目录不存在时创建、未登记时登记成工作区后再建会话（等价于 GUI 的「添加文件夹」） |
+| `title` | string，可选 | 会话标题，在第一轮开始前写入 |
+| `agent_preset` | string，可选 | Agent preset id，由 DSH 解析并挂载 |
+
+返回 `{ status, session_id, short_id, cwd, workspace_id?, title?, agent_preset?, message_id, detail }`，
+`status` 为 `accepted` / `refused` / `failed`。完整契约、实现路径、授权与限制见独立文档
+[`docs/create-session-agent.md`](docs/create-session-agent.md)。
+
 ### `review_session_messages`
 
 接收方审批工具，配合 `inbound: hold` 使用。
@@ -194,6 +234,9 @@ dsh --profile demo
 | `socketEnabled` | `true` | 是否开本地 bus |
 | `socketDir` | 系统临时目录 | POSIX socket / Windows 管道名的来源目录；默认 `…/dsh-session-messaging-<uid>` |
 | `outboxDir` | `$DSH_HOME/session-messaging/outbox` | 账本目录 |
+| `allowCreateSession` | `true` | 允许 `create_session_agent` 创建新的普通会话 |
+| `maxCreatesPerMinute` | `4` | 每个调用方每分钟最多创建多少个新会话 |
+| `allowCreateWorkspace` | `true` | 允许 `ensure_workspace` 把目录登记成工作区 |
 
 需要覆盖配置时，在 `cordis.patch.yml` 的行内加 `config`：
 
@@ -260,7 +303,8 @@ Claude Code 是每会话一个 inbox socket：脚本拿到的就是自己会话�
 `resume` 后投递。隔离性来自 token/授权矩阵，而不是地址数量。（2026-11-01 决策）
 
 安全模型与 Claude Code 的 inbox socket 同级：**以本机 OS 用户为信任边界**。目录 0700、token 0600/内存态、
-单次连接、30s 超时；token 只能由同用户的 shell 读到，不跨用户、不跨机器。
+单次连接、30s 超时；token 只能由同用户的 shell 读到，不跨用户、不跨机器。bus 端点目录无法收紧到 0700 时
+宁可让总线不启动，账本目录则只记日志、不阻断插件。
 
 ## 授权矩阵
 
@@ -273,6 +317,7 @@ Claude Code 是每会话一个 inbox socket：脚本拿到的就是自己会话�
 | 别人的 subagent | 无（`allowlist` 也不能绕过） | 拒绝（`subagent-of-other`，对外表现为 `not_found`） |
 | 团队成员 | `agentTeams.membership` + `listMembers` 命中 | 允许（团队名册本身就是授权关系，可跨 workspace） |
 | 冷会话 | `allowColdWake`（队友例外：由 team mailbox 冷恢复） | resume 后投递 |
+| 创建会话 | 调用方是 root 会话，且目标目录（`cwd` 或 `workspace` 根）等于调用方 cwd 或命中 `allowCrossWorkspace` / `allowlist` | 允许；子代理调用一律拒绝 |
 
 身份只来自运行时：工具通道是 `exec.agent`，脚本通道是 bus token；消息正文/`source` 里的任何字段都不能冒充发送者。
 
@@ -284,19 +329,23 @@ Claude Code 是每会话一个 inbox socket：脚本拿到的就是自己会话�
 - 未实现 Claude Code 的 `notify_when_idle`（无人时排队、目标回来再投），目前 `queued` 已覆盖"目标不在时先落盘"；
 - 名字解析对冷会话需要 `sessionQuery`（缺失时只能按 id/live 名字寻址），冷标题按 30s 缓存、每次最多扫 200 条会话；
 - 冷唤醒需要可用的模型路由（历史或部署默认）；都没有时拒绝唤醒并保持 `queued`，不会用残缺 Agent 吞消息；
-- `hold` 的 notice 只在接收方**在线**时发；离线目标靠启动时的 `recover` 惰性过期，不会补发 notice（过期结果仍会在其下次 `review` 报告）。
+- `hold` 的 notice 只在接收方**在线**时发；离线目标靠启动时的 `recover` 惰性过期，不会补发 notice（过期结果仍会在其下次 `review` 报告）；
+- `create_session_agent` 的已知限制（headless / CLI 组合没有 `sessionController` / `workspaceRegistry`、`custom` 权限不可继承、
+  不等待第一轮、不支持 fork / 幂等）见独立文档
+  [`docs/create-session-agent.md`](docs/create-session-agent.md#7-已知限制)。
 
 ## 开发
 
 ```sh
 pnpm run typecheck
-pnpm test          # 108 个用例，其中 1 个平台相关跳过：单测 + 构建产物级 e2e（会先 build）
+pnpm test          # 198 个用例通过（共 199，1 个平台相关跳过）：单测 + 构建产物级 e2e（会先 build）
 pnpm run build
 ```
 
 `pnpm test` 覆盖：寻址与歧义、授权矩阵、通道路由（team 优先 / subagent / 回落）、inactive 队友与自己的
 冷 subagent 寻址、入站三态、审批 accept/refuse/expire（含 recover 先过期后的报告）/容量/重新授权、账本重放与
 按 `messageId` 去重、`agent/created` 恢复钩子、冷唤醒路由（历史/默认/拒绝/首轮回滚）、去重、限额、
+创建会话（root-only / cwd 授权 / 限额 / 首条消息构造 / preset 与权限继承 / 部分失败语义）、
 参数与渲染契约、真 socket 协议与多实例端点隔离、总线 UTF-8 分块与参数校验、JSONL 残行修复/原子压缩/路径穿越防线，
 以及直接加载 `lib/index.js` 的包级 e2e。
 
@@ -306,29 +355,36 @@ pnpm run build
 # 一次性准备：独立 profile（与日常 GUI 隔离）
 dsh plugin --profile session-messaging-e2e add "$PWD"
 
-# 运行：两个 OS 进程，真模型，真工具调用
+# 运行：多个 OS 进程，真模型，真工具调用
 DEEPSEEK_API_KEY=... node scripts/e2e-runtime.mjs
 ```
 
-脚本会写入该 profile 的 `cordis.patch.yml`（`inbound: hold` + 1.5s 截止），然后：
+运行前需要 `dsh` CLI 在 `PATH` 里、可用凭据（`DEEPSEEK_API_KEY`，或受管凭据文件
+`$DSH_HOME/.credentials.yaml`），以及 `zstd`（会话日志是多帧 zstd，缺了无法校验落盘结果）。
+脚本在运行前备份该 profile 的 `cordis.patch.yml`（原始内容同时落到
+`e2e-workspace/artifacts/cordis.patch.yml.orig`，进程被强杀时也能手工恢复），结束时还原，
+并按阶段切换审批策略：审批阶段写 `inbound: hold` + 60s 截止，过期阶段改成 1.5s 截止。
 
-1. 用 `dsh headless --json` 建一个目标会话；
-2. 起另一个会话，让模型调 `list_session_agents` + `send_session_message`，断言状态是 `held`；
-3. 用 `--session-id` 让目标会话恢复自己，调 `review_session_messages` list→accept，断言消息进入目标
-   `user/message` 历史（`source.kind = session-message`）；
-4. 再发一条、等过截止时间，断言 `review` 报 `expired` 且消息从未进入目标会话。
+5 个 headless 阶段：
 
-本机结果（2026-11-01，修复前基线）：**17/17 检查通过**——目标会话建立、`held` 不入会话、目标
-`--session-id` 恢复后 `accept` 并进入 `user/message` 历史（`source.kind = session-message`）、第二次发送
-等过截止后 `review` 报 `expired` 且消息从未进入会话。本次修复没有重跑官方脚本（`DEEPSEEK_API_KEY` 额度不足），
-改用本地模型脚本回归；脚本会在运行前备份该 profile 的 `cordis.patch.yml` 并在结束时还原（进程被强杀时备份仍在
-`e2e-workspace/artifacts/cordis.patch.yml.orig`）。
+1. `01-target-create`：用 `dsh headless --json` 建一个目标会话；
+2. `02-sender-hold`：起另一个会话，让模型调 `list_session_agents` + `send_session_message`，断言状态是
+   `held` 且消息还没进入目标会话；
+3. `03-target-accept`：用 `--session-id` 让目标会话恢复自己，调 `review_session_messages` list→accept，
+   断言消息进入目标 `user/message` 历史（`source.kind = session-message`）；
+4. `04-sender-expiry`：把截止时间改成 1.5s 后再发一条，断言状态仍是 `held`；
+5. `05-target-expire`：等过截止时间，断言 `review` 报 `expired` 且消息从未进入目标会话。
+
+脚本共 18 个 `record()` 检查（凭据、隔离 profile、`zstd`、patch 是否生效到组合配置、目标会话建立、
+`held` 不入会话、accept 入历史、过期不入会话等）。**本轮只把脚本拆到 `scripts/e2e/`
+（env / profile / headless / checks），没有重跑官方 e2e**（`DEEPSEEK_API_KEY` 额度不足）；
+上一次实跑是 2026-11-01 的旧脚本：17/17 检查通过，覆盖场景与上面 5 个阶段相同。
 
 ### 本地模型 e2e（开发期脚本，不随仓库提交）
 
 本地网关联调用的 `local-flow-e2e.mjs` / `recovery-e2e.mjs` 属于开发期临时脚本，未纳入版本控制
 （`e2e-workspace/` 在 `.gitignore` 中），因此上面的仓库不提供这两个入口。需要回归同类场景时，用
-`tests/messaging.test.ts` 的服务级用例覆盖 `held`/`accept`/`refuse`/`expire`/重放去重，
+`tests/messaging-*.test.ts` 的服务级用例覆盖 `held`/`accept`/`refuse`/`expire`/重放去重，
 或用 `node scripts/e2e-runtime.mjs` 跑真模型版本。
 
 产物在 `e2e-workspace/artifacts/`（每次 run 的 `--json` 事件流）。清理：

@@ -14,6 +14,8 @@ import type { DeliveryRoute } from '../domain/routing.ts'
 import type { OutboxAck, OutboxEntry } from '../domain/outbox.ts'
 import type { HeldMessage, HeldVerdict } from '../domain/held-message.ts'
 
+export type { WorkspaceResolver, WorkspaceTarget } from './ports-workspace.ts'
+
 /** 运行时验证过的调用方：在线 Agent 加它的身份。 */
 export interface Caller {
   /** 在线 Agent（工具/总线入口保证存在）。 */
@@ -134,4 +136,58 @@ export interface DeliveryGateway {
    * @param topic - 主题标签。
    */
   notify(agentId: string, text: string, topic: string): void
+}
+
+/** 一次创建会话请求（端口视角）。 */
+export interface SessionCreationRequest {
+  /** 调用方（在线 Agent 与身份）。 */
+  readonly caller: Caller
+  /** 新会话的工作目录（绝对路径，已通过应用层授权）。 */
+  readonly cwd: string
+  /** 已解析的 Workspace；给出时 DSH 用它创建并归属会话。 */
+  readonly workspaceId?: string
+  /** 新会话收到的第一条消息。 */
+  readonly message: UserMessage
+  /** 可选标题。 */
+  readonly title?: string
+  /** 可选 Agent preset。 */
+  readonly agentPreset?: string
+  /** 路径比较是否忽略大小写（部署策略，缺省 false）。 */
+  readonly caseInsensitivePaths?: boolean
+  /** 取消信号。 */
+  readonly signal?: AbortSignal
+}
+
+/** 一次创建会话的结果。 */
+export interface CreatedSession {
+  /** 新会话标识。 */
+  readonly sessionId: string
+  /** 新会话实际使用的工作目录（会话头里的值优先）。 */
+  readonly cwd: string
+  /** 会话实际归属的 Workspace（未归属时缺省）。 */
+  readonly workspaceId?: string
+  /** 首条消息是否已进入新会话 inbox。 */
+  readonly accepted: boolean
+  /** 面向模型的说明。 */
+  readonly detail: string
+  /** 实际写入的标题（标题未写或写入失败时缺省）。 */
+  readonly title?: string
+  /** 新会话实际运行的 Agent preset。 */
+  readonly agentPreset?: string
+}
+
+/**
+ * 会话创建端口：用 DSH 内部接口创建一个普通（root）会话并投递首条消息。
+ *
+ * 之所以单独成端口：应用层只决定「建在哪个目录、发什么正文」，而
+ * `sessionController` / `agents.followup` / preset 挂载 / 权限继承都是运行时细节。
+ */
+export interface SessionCreator {
+  /**
+   * 创建会话并投递首条消息。
+   * @param request - 目录、消息、标题、preset 与取消信号。
+   * @returns 创建结果；会话已创建但首条消息未投递时 `accepted` 为 false。
+   * @throws 会话根本没有创建成功时抛错（需要调用方区分这两种失败）。
+   */
+  create(request: SessionCreationRequest): Promise<CreatedSession>
 }

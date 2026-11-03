@@ -1,17 +1,20 @@
 /**
- * bus 端点派生规则（infrastructure/paths）的单元测试。
+ * bus 端点派生规则与目录权限收紧（infrastructure/paths）的单元测试。
  *
  * 重点是 Windows：命名管道名必须由 socketDir 决定，测试进程 / 第二个宿主才不会
  * 和正在运行的 GUI 抢同一条管道（`EADDRINUSE`）；同时同一目录必须在不同进程间
  * 稳定得到同一个端点。POSIX 的 `<dir>/bus.sock` 形式保持不变。
+ * 目录权限部分只断言 POSIX 的 0700（Windows 没有权限位语义，跳过）。Windows
+ * 上 chmod 不可用，`strict` 的失败分支也无法在可移植单测里构造，因此只固定
+ * 「严格模式对正常目录不抛错、且目录仍为 0700」这一半契约。
  */
 
 import { createHash } from 'node:crypto'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { busEndpoint, defaultSocketDir } from '../src/infrastructure/paths.ts'
+import { busEndpoint, defaultSocketDir, ensurePrivateDir } from '../src/infrastructure/paths.ts'
 
 const isWindows = process.platform === 'win32'
 /** Windows 命名管道命名空间的字面前缀 `\\.\pipe\`。 */
@@ -83,5 +86,27 @@ describe('busEndpoint', () => {
 
   it('keeps the default socket directory per user under the temp directory', () => {
     expect(defaultSocketDir()).toBe(join(tmpdir(), `dsh-session-messaging-${expectedUser()}`))
+  })
+})
+
+describe('ensurePrivateDir', () => {
+  it('creates nested directories with owner-only permissions', () => {
+    const dir = join(tempDir(), 'nested', 'ledger')
+    ensurePrivateDir(dir)
+    // Windows 没有 POSIX 权限位语义：只验证目录建出来，不比较 mode。
+    if (!isWindows) expect(statSync(dir).mode & 0o777).toBe(0o700)
+  })
+
+  it('accepts strict mode and keeps the bus endpoint directory private', () => {
+    const dir = join(tempDir(), 'bus')
+    // 严格模式是 bus 启动的门禁：收紧失败要抛错，成功时不能有任何副作用。
+    expect(() => ensurePrivateDir(dir, { strict: true })).not.toThrow()
+    if (!isWindows) expect(statSync(dir).mode & 0o777).toBe(0o700)
+  })
+
+  it('is idempotent for an existing directory', () => {
+    const dir = join(tempDir(), 'again')
+    ensurePrivateDir(dir, { strict: true })
+    expect(() => ensurePrivateDir(dir, { strict: true })).not.toThrow()
   })
 })

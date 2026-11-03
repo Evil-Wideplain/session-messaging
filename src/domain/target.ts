@@ -81,6 +81,15 @@ export function normalizeAddress(input: string): string {
 }
 
 /**
+ * 会话标识的短写：去掉 `session-` 前缀后取 8 个字符，便于模型引用。
+ * @param id - 会话标识。
+ * @returns 供展示与引用的短 id。
+ */
+export function shortIdOf(id: string): string {
+  return id.startsWith('session-') ? id.slice('session-'.length, 'session-'.length + 8) : id.slice(0, 8)
+}
+
+/**
  * 会话的显示名：优先显式名称（团队名册），再标题，最后回退为短 id。
  * @param id - 会话标识。
  * @param title - 已记录的标题。

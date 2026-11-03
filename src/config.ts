@@ -38,6 +38,12 @@ export interface Config {
   readonly socketDir?: string
   /** 出站账本目录；默认 `$DSH_HOME/session-messaging/outbox`。 */
   readonly outboxDir?: string
+  /** 是否允许模型工具创建新会话。 */
+  readonly allowCreateSession?: boolean
+  /** 一个调用方每分钟最多创建多少个新会话。 */
+  readonly maxCreatesPerMinute?: number
+  /** 是否允许创建会话时用 `ensure_workspace` 自动登记工作区。 */
+  readonly allowCreateWorkspace?: boolean
 }
 
 /** {@link Config} 的运行时 schema。 */
@@ -70,6 +76,12 @@ export const Config = z.object({
     .description('暴露供 shell 脚本使用的本地总线。'),
   socketDir: z.string(),
   outboxDir: z.string(),
+  allowCreateSession: z.boolean().default(true)
+    .description('允许模型工具创建新的普通会话。'),
+  maxCreatesPerMinute: z.number().step(1).min(1).default(4)
+    .description('一个调用方每分钟最多创建多少个新会话。'),
+  allowCreateWorkspace: z.boolean().default(true)
+    .description('允许 create_session_agent 用 ensure_workspace 把目录登记成工作区。'),
 }) as unknown as z<Config>
 
 /** 所有默认值都已补齐的配置。 */
@@ -88,6 +100,9 @@ export interface ResolvedConfig {
   readonly socketEnabled: boolean
   readonly socketDir: string | undefined
   readonly outboxDir: string | undefined
+  readonly allowCreateSession: boolean
+  readonly maxCreatesPerMinute: number
+  readonly allowCreateWorkspace: boolean
   /**
    * 路径比较是否忽略大小写。
    *
@@ -118,6 +133,9 @@ export function resolveConfig(config: Config): ResolvedConfig {
     socketEnabled: config.socketEnabled ?? true,
     socketDir: config.socketDir,
     outboxDir: config.outboxDir,
+    allowCreateSession: config.allowCreateSession ?? true,
+    maxCreatesPerMinute: config.maxCreatesPerMinute ?? 4,
+    allowCreateWorkspace: config.allowCreateWorkspace ?? true,
     pathCaseInsensitive: process.platform === 'win32',
   }
 }

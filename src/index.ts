@@ -1,14 +1,15 @@
 /**
  * DSH 跨会话消息插件（组合根）。
  *
- * 提供三个模型工具（`list_session_agents`、`send_session_message`、
- * `review_session_messages`）和一个 shell 传输层（每用户一条本地总线），
- * 让同一 DSH 进程内的 Agent 会话可以互相寻址、唤醒、审批消息。
+ * 提供四个模型工具（`list_session_agents`、`send_session_message`、
+ * `review_session_messages`、`create_session_agent`）和一个 shell 传输层
+ * （每用户一条本地总线），让同一 DSH 进程内的 Agent 会话可以互相寻址、唤醒、
+ * 审批消息，并从零创建一个新的普通会话。
  *
  * 代码按 DDD 分层组织：
  * - `domain/`：寻址、授权、路由、消息与审批的纯业务规则；
- * - `application/`：用例编排（list/send/review/recover）与端口接口；
- * - `infrastructure/`：JSONL 账本、Cordis 会话目录、投递网关；
+ * - `application/`：用例编排（list/send/review/recover/create）与端口接口；
+ * - `infrastructure/`：JSONL 账本、Cordis 会话目录、投递网关、会话创建；
  * - `interfaces/`：模型工具与本地总线。
  *
  * @module dsh-plugin-session-messaging
@@ -21,7 +22,7 @@ import { resolveConfig } from './config.ts'
 import { createMessagingRuntime } from './composition.ts'
 import { identityOf } from './domain/authorization.ts'
 import { LocalBus, registerShellEnv } from './interfaces/local-bus.ts'
-import { createListTool, createReviewTool, createSendTool } from './interfaces/model-tools.ts'
+import { createCreateSessionAgentTool, createListTool, createReviewTool, createSendTool } from './interfaces/model-tools.ts'
 
 export { Config }
 export type { Config as MessagingConfig } from './config.ts'
@@ -41,6 +42,7 @@ export function apply(ctx: Context, config: MessagingConfig): void {
   ctx.tools.register(createListTool(service))
   ctx.tools.register(createSendTool(service))
   ctx.tools.register(createReviewTool(service))
+  ctx.tools.register(createCreateSessionAgentTool(runtime.creation))
   ctx.effect(() => () => runtime.dispose())
 
   if (config.socketEnabled !== false) {

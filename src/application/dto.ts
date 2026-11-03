@@ -96,3 +96,47 @@ export interface ReviewResult {
   readonly held: readonly HeldRow[]
   readonly outcomes: readonly ReviewOutcome[]
 }
+
+/** `create_session_agent` 的终态。 */
+export type CreateSessionStatus = 'accepted' | 'refused' | 'failed'
+
+/** 一次创建会话请求的输入。 */
+export interface CreateSessionInput {
+  /** 新会话收到的第一条消息正文。 */
+  readonly prompt: string
+  /** 新会话的工作目录（绝对路径）；缺省为调用方自己的工作目录。 */
+  readonly cwd?: string
+  /**
+   * 目标工作区：Workspace id，或已登记 Workspace 的绝对路径。
+   * 给出时会话建在该 Workspace 的根目录；与 cwd 同时给出时必须指向同一目录。
+   */
+  readonly workspace?: string
+  /**
+   * 配合 `cwd` / `workspace` 路径使用：目录不存在时创建、未登记时登记成
+   * Workspace（等价于 GUI 的「添加文件夹」），再在该 Workspace 里建会话。
+   */
+  readonly ensureWorkspace?: boolean
+  /** 可选标题；在首轮开始前写入。 */
+  readonly title?: string
+  /** 可选 Agent preset id，由 DSH 解析并挂载。 */
+  readonly agentPreset?: string
+}
+
+/** `create_session_agent` 的返回值。 */
+export interface CreateSessionResult {
+  readonly status: CreateSessionStatus
+  /** 新会话标识；创建在 DSH 侧失败时为空字符串。 */
+  readonly sessionId: string
+  readonly shortId: string
+  /** 新会话的工作目录；未能确定时为空字符串。 */
+  readonly cwd: string
+  /** 会话实际归属的 Workspace id；未归属时缺省。 */
+  readonly workspaceId?: string
+  /** 首条消息的标识（写在消息 source 上，便于后续对账）。 */
+  readonly messageId: string
+  readonly detail: string
+  /** 成功写入的标题。 */
+  readonly title?: string
+  /** 新会话实际运行的 Agent preset。 */
+  readonly agentPreset?: string
+}

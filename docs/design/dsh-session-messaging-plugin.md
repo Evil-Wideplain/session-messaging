@@ -534,6 +534,11 @@ bash/pwsh 通道一起交付。本节记录**实际落地**的形态与方案正
 | `src/interfaces/` | `model-tools.ts` 三个工具的 JSON Schema 与参数校验、`local-bus.ts` 每用户 bus server + shellEnv 注入 |
 | `scripts/e2e-runtime.mjs` | 真运行时 e2e（dsh CLI + 真模型）；只允许跑在名字以 `-e2e` 结尾的 profile，并备份/还原其 patch |
 
+（v3 起为满足「每个 TS/JS 文件 ≤200 行」的工程规范，上表中的长文件已拆成
+barrel/门面 + 子目录：`types/`、`application/messaging/`、`interfaces/tools/`、
+`infrastructure/delivery/`、`infrastructure/directory/`、`interfaces/bus/`；
+当前目录结构以 README 为准。）
+
 ### 13.2 与正文的差异
 
 | 正文 | 实际 | 原因 |
@@ -689,9 +694,9 @@ v2 的逻辑是正确的，但模块按「技术件」平铺（`service.ts` 同�
 | 层 | 目录 | 职责 | 允许依赖 |
 |---|---|---|---|
 | 领域层 | `src/domain/` | 会话目标值对象、授权矩阵、通道路由、消息与送达判定、入站三态与容量规则、出站账本模型 | 只依赖 `src/types.ts` 的共享契约；不碰 Cordis、不碰 `node:fs` |
-| 应用层 | `src/application/` | 用例编排（list / send / review / recover）、DTO、限流去重、端口接口 | 领域层 + 端口；不认识具体适配器 |
+| 应用层 | `src/application/` | 用例编排（list / send / review / recover）、DTO、限流去重、端口接口 | 领域层 + 端口 + `types.ts` 共享契约 + `config.ts` 的类型与纯标准库计算（`node:crypto` / `node:path`）；不认识具体适配器 |
 | 基础设施层 | `src/infrastructure/` | JSONL 账本、Cordis 会话目录、投递网关（官方通道 / inbox / 冷唤醒）、路径、冷会话短读 | 领域层 + 应用层端口 + Cordis |
-| 接口层 | `src/interfaces/` | 模型工具（schema + 参数校验 + DTO 投影）、本地总线 | 应用层 |
+| 接口层 | `src/interfaces/` | 模型工具（schema + 参数校验 + DTO 投影）、本地总线 | 应用层 + Cordis 上下文与 `infrastructure/paths`（仅本地总线传输这一例外） |
 | 组合根 | `index.ts` / `composition.ts` | 装配端口实现、注册工具 / 总线 / 恢复钩子 | 所有层 |
 
 依赖方向永远指向领域：`domain ← application ← interfaces`，`infrastructure` 实现
@@ -733,3 +738,37 @@ v2 的逻辑是正确的，但模块按「技术件」平铺（`service.ts` 同�
 重构后 `pnpm test` 仍为 37/37 通过（单测 33 + 包级 e2e 4），`tsc --noEmit` 无错误；
 真运行时 e2e 重跑 17/17 通过，说明分层调整没有改变外部契约（工具名、参数、状态码、bus 协议、
 账本文件名与 JSONL 记录格式全部保持兼容）。
+
+---
+
+## 16. v3：创建会话（`create_session_agent`，2026-11-02）
+
+v3 新增模型工具 `create_session_agent`：从零创建一个普通（root）会话，并把首条消息投递进去。
+**完整的工具文档（契约、状态语义、实现路径、授权、失败排查、已知限制、验证方式）独立维护在
+[`docs/create-session-agent.md`](../create-session-agent.md)**；本节只保留设计记录。
+
+设计要点（论证见独立文档 §3–§4）：
+
+1. **创建走 `ctx.sessionController.create()`，不走 `ctx.agents.create()`。** 后者把新会话登记成
+   调用方 Fiber 的孩子，插件重载/卸载即被拆掉，并跳过产品层要做的 mkdir、preset 组合、模型选择、
+   Workspace 归属与侧栏广播；控制器的生命周期归应用组合，与 GUI「新建会话」同构。
+2. **首条消息用 `agent.followup()` 投递**，正文复用本插件的转发构造（`session-message` 来源 +
+   `Session message <id> from <name> (<id>):` 来源框架）。不用 `sessionController.prompt()`：那是
+   Remote 客户端入口，依赖调用侧 principal 与附件/文件回执服务。
+3. **root-only。** 子代理已有 `subagent` / `spawn_teammate`；允许它创建 root 会话会绕开委派深度与
+   权限收敛，因此应用层直接拒绝。
+4. **cwd 授权复用投递侧策略。** 缺省为调用方 cwd；显式 cwd 必须绝对路径，并过
+   `allowCrossWorkspace` / `allowlist`；创建后尽力补 Workspace attach、继承调用方权限预设、写标题。
+5. **限额与失败语义。** 参数校验在限额之前，被拒绝的请求不消耗配额；会话已创建但首条消息未投递时
+   返回 `failed` + `session_id`（会话真实存在，可用 `send_session_message` 补发）。
+6. **首条消息不进入站审批。** 它与人类新建会话后输入第一条消息等价；`inbound: hold` / `refuse` 只约束
+   之后别人发给这个会话的跨会话投递。
+7. **v4 增补：位置可指定工作区。** `create_session_agent` 接受 `workspace`（工作区 id 或已登记根目录
+   路径）与 `ensure_workspace`（目录不存在则创建、未登记则 `workspaceRegistry.create` 登记）。解析与
+   登记在基础设施层 `CordisWorkspaceResolver`；`ensure_workspace` 严格「先授权、后副作用」，并受
+   `allowCreateWorkspace` 控制。DSH 的 `attachSession` 要求会话 cwd 与工作区根目录完全相等，因此
+   子目录会话只能未分组，或先把子目录登记成独立工作区。
+8. **v4.1 修复记录（2026-11-03）。** 创建链收口：每分钟限额前移到 `ensure_workspace` 副作用之前（被限额
+   拒绝不产生目录/工作区）；`ensure` 返回的实路径（realpath）与授权路径不同时按规范路径重新授权；模型
+   可见的 `render` 输出清洗对端可控文本；投递网关 `dispose` 取消在途投递并释放恢复句柄；`workspace`
+   传 id 时的拒绝文案统一，避免枚举工作区登记状态。

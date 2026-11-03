@@ -126,6 +126,7 @@ describe('local bus protocol', () => {
         { body: { token, op: 'list', include_subagents: 'yes' }, why: 'include_subagents 是字符串' },
         { body: { token, op: 'send', to: 'session-b', message: 'x', dedupe: 'no' }, why: 'dedupe 是字符串' },
         { body: { token, op: 'send', to: '', message: 'x' }, why: 'to 为空' },
+        { body: { token, op: 'send', to: 'session-b', message: '   ' }, why: 'message 为空白' },
         { body: { token, op: 'send', to: 'session-b' }, why: '缺少 message' },
       ]
       for (const item of cases) {

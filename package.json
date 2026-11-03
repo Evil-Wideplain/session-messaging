@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-session-messaging",
   "version": "0.1.0",
-  "description": "DSH bundle plugin: cross-session addressing and messaging tools (list_session_agents, send_session_message, review_session_messages), official subagent/team routing, inbound accept/hold/refuse approval, and a local bus for shell scripts",
+  "description": "DSH bundle plugin: cross-session addressing and messaging tools (list_session_agents, send_session_message, review_session_messages, create_session_agent), official subagent/team routing, inbound accept/hold/refuse approval, and a local bus for shell scripts",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
