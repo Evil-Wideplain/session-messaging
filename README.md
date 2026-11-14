@@ -66,9 +66,29 @@
 自己的 continuable subagent 走 `ctx.subagents.sendMessage`，其余走会话 inbox（`Agent.steer`）。
 名册里的 inactive 队友也是可寻址目标，由 team mailbox 冷恢复。
 
+### 界面呈现
+
+别的会话发来的消息不再显示成折叠的「上下文注入」行，而是**和用户消息同形、换一种配色**的气泡：
+
+- 区分线索不只有颜色：气泡左缘有 3px 强调色竖条，顶部是来源行（收件箱图标 + 发送方显示名 +
+  短 session id，右侧「打开会话」）；底色淡淡混入强调色，明暗主题自动跟随；
+- **点击气泡**切到发送方会话（鼠标/触屏）。单击会等约 300ms 再导航，好让双击选词取消它；
+  选区落在气泡内时不导航——复制正文优先于跳转。键盘与读屏用户用「打开会话」按钮；
+- 气泡下方是时间与「复制」按钮（24px 热区、图标式，和用户消息的时间行同位同色）；
+  复制有三态：复制 / 已复制 / 复制失败，并通过 live region 播报；
+- 时间格式与 Chat 的用户消息一致（同一天只显示 `HH:mm`，跨天/跨年用同一套 locale 模板）；
+- 给模型看的来源框架 `Session message <messageId> from <name> (<senderId>):` 在 UI 上被剥离，
+  不会再占满气泡；正文完整显示（长消息不截断）。
+
+UI 是独立的客户端组件（`src/client/`，`SessionMessageView.tsx`），通过
+`conversation.chat.node` 的键控插槽注册，只认领 `source.kind === 'session-message'` 的
+`user/message`；其它 user message、notice、上下文注入的呈现都由 DSH 自己负责。客户端模块随插件包
+一起加载（`package.json` 的 `dsh.client`），没有单独的插件页开关。
+
 ## 快速开始
 
-前置条件：Node.js ≥ 22、pnpm、可用的 `dsh` CLI（DSH 0.2.x）。Windows / macOS / Linux 都支持，
+前置条件：Node.js ≥ 22、pnpm、可用的 `dsh` CLI（DSH ≥ 0.2.2-rc.3；客户端 UI 依赖这之后的
+Chat 插槽与 `uiWorkspace.openSession`）。Windows / macOS / Linux 都支持，
 本地总线在 Windows 上用命名管道、在 POSIX 上用 unix socket，无需额外配置。
 
 ```sh
@@ -87,7 +107,7 @@ dsh --profile demo
 
 ```sh
 pnpm run typecheck
-pnpm test          # 202 个用例通过（共 203，1 个平台相关跳过）：单测 + 构建产物级 e2e（会先 build）
+pnpm test          # 226 个用例通过（共 227，1 个平台相关跳过）：单测 + 构建产物级 e2e（会先 build）
 ```
 
 装好之后，在任意会话里用自然语言就能触发：
@@ -355,6 +375,16 @@ src/
 ├─ entries/
 │  ├─ messaging.ts              # 主行 session-messaging：运行时 + 三个工具 + 总线 + 恢复
 │  └─ creation.ts               # 创建行 session-creation：只注册 create_session_agent
+├─ client/                      # 浏览器端表现层（./client 子路径，esbuild 打成 lib/client.js）
+│  ├─ index.ts                  # 客户端入口：只转出 apply/inject
+│  ├─ apply.ts                  # 装配：locale / 样式 / Conversation 定义 / Chat 渲染器
+│  ├─ definition.ts             # 独占认领 session-message 的 Conversation 事件定义
+│  ├─ source.ts                 # 来源框架剥离、正文拼接、短 id、时间文本（纯函数）
+│  ├─ SessionMessageView.tsx    # 唯一可视化组件：强调色气泡 + 打开会话 + 复制
+│  ├─ icons.tsx                 # 内联 SVG 图标（收件箱/打开/复制/状态）
+│  ├─ styles.ts                 # 卡片样式（只引用主题 token）
+│  ├─ locale.ts                 # 客户端文案字典（zh/en）
+│  └─ contract.ts               # 客户端契约 barrel；类型真身在 contract/
 ├─ shared/
 │  └─ service.ts                # 跨行服务契约：sessionMessaging（主行 provide）
 ├─ composition.ts               # 装配：端口 → 具体适配器
@@ -398,6 +428,9 @@ src/
    └─ bus/                      # protocol / server / listener / connection / shell-env
 tests/
 ├─ support/                     # 共享夹具（不参与用例收集）
+├─ client-message.test.ts       # 来源框架剥离 / 正文拼接 / 时间文本（纯逻辑）
+├─ client-definition.test.ts    # 事件认领 / 视图模型 / Chat 节点（纯逻辑）
+├─ client-bundle.test.ts        # 构建产物级：lib/client.js 的 Loader 包装与注册
 ├─ messaging-*.test.ts          # 寻址/发送/路由/入站/恢复/冷唤醒/列表
 ├─ model-tools-*.test.ts        # 四个工具的 schema / render / execute
 ├─ create-session-*.test.ts     # 创建会话：服务 / 适配器 / 工具
@@ -405,6 +438,7 @@ tests/
 ├─ e2e-package-*.test.ts        # 构建产物级 e2e（lib/index.js + 真 socket）
 └─ bus*.test.ts、ledger.test.ts、paths.test.ts
 scripts/
+├─ build.mjs                    # 构建：tsc（Host）+ esbuild（客户端，打成 Loader 包装）
 ├─ e2e-runtime.mjs              # 真运行时 e2e 流程
 └─ e2e/                         # env / profile / headless / checks
 cordis.patch.yml                # bundle 层插入插件行
@@ -419,6 +453,10 @@ locale/creation/{en,zh}.json    # 子路径组件（session-creation）的标题
 `composition.ts` 是唯一允许 new 具体适配器的地方。代码注释统一用中文。
 单个 TS/JS 文件不超过 200 行：超过时按职责拆子模块，原文件保留为 barrel 或门面。
 
+`client/` 是独立的表现层：它不 import Host 侧的 `domain/` / `application/`（浏览器包里没有 Node
+内置模块，也刻意不依赖 DSH 客户端包），只按 `contract/` 里的本地声明消费 DSH 的服务；纯数据整理
+（`source.ts`）与 React 组件分开，便于不挂 DOM 直接测。
+
 ## 已知限制
 
 - 一次性 `dsh headless` 进程里冷唤醒的目标 turn 可能随宿主退出被中断；消息已进入 inbox/历史就确认，
@@ -430,21 +468,34 @@ locale/creation/{en,zh}.json    # 子路径组件（session-creation）的标题
 - `hold` 的 notice 只在接收方**在线**时发；离线目标靠启动时的 `recover` 惰性过期，不会补发 notice（过期结果仍会在其下次 `review` 报告）；
 - `create_session_agent` 的已知限制（headless / CLI 组合没有 `sessionController` / `workspaceRegistry`、`custom` 权限不可继承、
   不等待第一轮、不支持 fork / 幂等）见独立文档
-  [`docs/create-session-agent.md`](docs/create-session-agent.md#7-已知限制)。
+  [`docs/create-session-agent.md`](docs/create-session-agent.md#7-已知限制)；
+- Chat 里**还没落地**的 inbox 消息（`agent/inbox/spliced` 的 pending 投影）仍由 DSH 自带的 pending
+  steering 气泡渲染，长相与 durable 行不同；它通常在下一次 step 边界就变成 durable 行，属于过渡态；
+- 客户端模块清单在 Host 侧按 Loader 条目重启时重新读取：改完 `lib/client.js` 后要**重启 DSH**
+  （或在插件页把该组件关一次再开）才会加载，单纯刷新页面不一定生效；Web HMR 的自动替换只在
+  DSH 仓库里跑 `pnpm run dev:web` 时生效；
+- 没有浏览器自动化回归：`tests/client-bundle.test.ts` 只校验产物能被 Loader 包装、注册项正确，
+  实际观感（明暗主题、窄窗口、点击跳转）需要人工在 Web GUI 里确认；
+- 客户端文案只有中文与英文字典，其它 UI 语言按 locale 回退链显示英文。
 
 ## 开发
 
 ```sh
-pnpm run typecheck
-pnpm test          # 202 个用例通过（共 203，1 个平台相关跳过）：单测 + 构建产物级 e2e（会先 build）
+pnpm run typecheck   # Host（tsconfig.json）+ 客户端（tsconfig.client.json）
+pnpm test            # 会先 build：tsc 产出 Host 模块，esbuild 产出 lib/client.js
 pnpm run build
 ```
+
+`lib/client.js` 是浏览器端产物：单文件、自带 `window.__ModuleLoader__.load({ id, factory })`
+包装，只把 `react` / `react/jsx-runtime` 留给宿主的静态模块表。它不引用 Node 内置模块，也不
+import 任何 `@deepseek-ai/dsh-*` 包——客户端服务的类型全部在 `src/client/contract/` 本地声明。
 
 `pnpm test` 覆盖：寻址与歧义、授权矩阵、通道路由（team 优先 / subagent / 回落）、inactive 队友与自己的
 冷 subagent 寻址、入站三态、审批 accept/refuse/expire（含 recover 先过期后的报告）/容量/重新授权、账本重放与
 按 `messageId` 去重、`agent/created` 恢复钩子、冷唤醒路由（历史/默认/拒绝/首轮回滚）、去重、限额、
 创建会话（root-only / cwd 授权 / 限额 / 首条消息构造 / preset 与权限继承 / 部分失败语义）、
-参数与渲染契约、真 socket 协议与多实例端点隔离、总线 UTF-8 分块与参数校验、JSONL 残行修复/原子压缩/路径穿越防线，
+参数与渲染契约、真 socket 协议与多实例端点隔离、总线 UTF-8 分块与参数校验、JSONL 残行修复/原子压缩/路径穿越防线、
+跨会话消息的 UI 纯逻辑（来源框架剥离 / 独占认领 / Chat 节点）与 `lib/client.js` 的 Loader 产物形状，
 以及直接加载 `lib/index.js` 的包级 e2e。
 
 ### 真运行时 e2e（可选，需要模型凭据）
